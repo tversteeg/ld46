@@ -28,9 +28,8 @@ jobs:
       - name: install rust
         uses: actions-rs/toolchain@v1
         with:
-          profile: minimal
+          profile: default
           toolchain: stable
-          components: rustfmt clippy
           override: true
 
       - name: cargo check
