@@ -122,7 +122,7 @@ impl<'a, 'b> EventHandler for Game<'a, 'b> {
 fn main() {
     miniquad::start(
         Conf {
-            window_title: concat!("replace_me - ", env!("CARGO_PKG_VERSION")).to_string(),
+            window_title: concat!("ld46 - ", env!("CARGO_PKG_VERSION")).to_string(),
             window_width: WIDTH as i32,
             window_height: HEIGHT as i32,
             loading: Loading::Embedded,
