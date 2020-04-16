@@ -53,19 +53,19 @@ impl Render {
         let vertices: [Vertex; 4] = [
             Vertex {
                 pos: Vec2 { x: -1.0, y: -1.0 },
-                uv: Vec2 { x: 0.0, y: 0.0 },
+                uv: Vec2 { x: 0.0, y: 1.0 },
             },
             Vertex {
                 pos: Vec2 { x: 1.0, y: -1.0 },
-                uv: Vec2 { x: 1.0, y: 0.0 },
-            },
-            Vertex {
-                pos: Vec2 { x: 1.0, y: 1.0 },
                 uv: Vec2 { x: 1.0, y: 1.0 },
             },
             Vertex {
+                pos: Vec2 { x: 1.0, y: 1.0 },
+                uv: Vec2 { x: 1.0, y: 0.0 },
+            },
+            Vertex {
                 pos: Vec2 { x: -1.0, y: 1.0 },
-                uv: Vec2 { x: 0.0, y: 1.0 },
+                uv: Vec2 { x: 0.0, y: 0.0 },
             },
         ];
         let vertex_buffer = Buffer::immutable(ctx, BufferType::VertexBuffer, &vertices);

@@ -1,11 +1,11 @@
-/* mod audio; */
+mod gui;
 mod input;
 mod physics;
 mod player;
 mod render;
 mod sprite;
 
-use crate::{input::Input, render::Render};
+use crate::{gui::Gui, input::Input, render::Render};
 use anyhow::Result;
 use miniquad::{
     conf::{Conf, Loading},
@@ -24,6 +24,8 @@ struct Game<'a, 'b> {
     dispatcher: Dispatcher<'a, 'b>,
     /// Our wrapper around the OpenGL calls.
     render: Render,
+    /// Whether our game started or not.
+    started: bool,
 }
 
 impl<'a, 'b> Game<'a, 'b> {
@@ -49,8 +51,8 @@ impl<'a, 'b> Game<'a, 'b> {
         // Add the input system
         world.insert(Input::default());
 
-        // Add the audio system
-        /* world.insert(Audio::new()); */
+        // Add the gui system
+        world.insert(Gui::new(WIDTH, HEIGHT));
 
         // Setup the dispatcher with the blit system
         let dispatcher = DispatcherBuilder::new()
@@ -60,17 +62,6 @@ impl<'a, 'b> Game<'a, 'b> {
             .with_thread_local(specs_blit::RenderSystem)
             .build();
 
-        /*
-        {
-            // Start the audio
-            let mut audio = world.write_resource::<Audio>();
-            audio.run();
-        }
-        */
-
-        // Spawn the initial game elements
-        player::spawn_player(&mut world)?;
-
         // Setup the OpenGL render part
         let render = Render::new(ctx, WIDTH, HEIGHT);
 
@@ -78,7 +69,16 @@ impl<'a, 'b> Game<'a, 'b> {
             world,
             dispatcher,
             render,
+            started: false,
         })
+    }
+
+    /// Start the game.
+    pub fn start(&mut self) {
+        // Spawn the initial game elements
+        player::spawn_player(&mut self.world).expect("Couldn't spawn player");
+
+        self.started = true;
     }
 }
 
@@ -94,6 +94,13 @@ impl<'a, 'b> EventHandler for Game<'a, 'b> {
     fn draw(&mut self, ctx: &mut Context) {
         // Get the pixel buffer to render it
         let mut buffer = self.world.write_resource::<PixelBuffer>();
+
+        // Render the GUI
+        let mut gui = self.world.write_resource::<Gui>();
+        if self.started {
+        } else {
+            gui.render_startup(&mut buffer);
+        }
 
         // Render the buffer
         self.render.render(ctx, &buffer);
@@ -114,6 +121,11 @@ impl<'a, 'b> EventHandler for Game<'a, 'b> {
         _keymods: KeyMods,
         _repeat: bool,
     ) {
+        // Start the game when space is pressed
+        if !self.started && keycode == KeyCode::Space {
+            self.start();
+        }
+
         // Pass the input to the resource
         (*self.world.write_resource::<Input>()).handle_key(keycode, true);
     }
@@ -123,8 +135,8 @@ fn main() {
     miniquad::start(
         Conf {
             window_title: concat!("ld46 - ", env!("CARGO_PKG_VERSION")).to_string(),
-            window_width: WIDTH as i32,
-            window_height: HEIGHT as i32,
+            window_width: WIDTH as i32 * 2,
+            window_height: HEIGHT as i32 * 2,
             loading: Loading::Embedded,
             ..Default::default()
         },

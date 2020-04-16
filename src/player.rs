@@ -30,10 +30,10 @@ impl<'a> System<'a> for PlayerSystem {
     fn run(&mut self, (input, player, speed, mut vel): Self::SystemData) {
         for (vel, speed, _) in (&mut vel, &speed, &player).join() {
             if input.up_pressed() {
-                vel.0.y += speed.0;
+                vel.0.y -= speed.0;
             }
             if input.down_pressed() {
-                vel.0.y -= speed.0;
+                vel.0.y += speed.0;
             }
             if input.left_pressed() {
                 vel.0.x -= speed.0;

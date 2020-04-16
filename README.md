@@ -17,8 +17,6 @@
 	
 <p align="center">
 	<a href="https://github.com/tversteeg/ld46/actions"><img src="https://github.com/tversteeg/ld46/workflows/CI/badge.svg" alt="CI"/></a>
-	<a href="https://crates.io/crates/ld46"><img src="https://img.shields.io/crates/v/ld46.svg" alt="Version"/></a>
-	<img src="https://img.shields.io/crates/l/ld46.svg" alt="License"/>
 	<br/>
 </p>
 
