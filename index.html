@@ -1,11 +1,23 @@
 <head>
 	<meta charset="utf-8">
 	<title>ld46</title>
+	<link href="https://fonts.googleapis.com/css2?family=Geostar&display=swap" rel="stylesheet">
+
+	<style>
+* {
+	text-align: center;
+	font-family: 'Geostar', cursive;
+	border-color: #CC3495;
+	color: #FFFFFF;
+}
+body { background-color: #0B0630; }
+h1 { font-size: 40px; }
+	</style>
 </head>
 
 <body>
-	<canvas id="glcanvas" tabindex="1" width="800" height="600" style="margin-left: auto; margin-right: auto; display: block; padding-left: 0; padding-right: 0;"></canvas>
-	<h1 style="text-align: center">ld46</h1>
+	<canvas id="glcanvas" tabindex="1" width="800" height="600" style="margin-left: auto; margin-right: auto; display: block; padding-left: 0; padding-right: 0; border-style: solid;"></canvas>
+	<h1>LD46</h1>
 	<script src="https://not-fl3.github.io/miniquad-samples/gl.js"></script>
 	<script>load("ld46.wasm");</script>
 </body>
