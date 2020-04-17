@@ -15,10 +15,6 @@ categories = []
 is-it-maintained-issue-resolution = { repository = "tversteeg/ld46" }
 is-it-maintained-open-issues = { repository = "tversteeg/ld46" }
 
-[features]
-default = []
-parallel = ["specs-blit/parallel"]
-
 [dependencies]
 anyhow = "1.0.28"
 derive_deref = "1.1.0"

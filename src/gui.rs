@@ -23,4 +23,20 @@ impl Gui {
             (20, 20),
         );
     }
+
+    /// Draw a label.
+    pub fn draw_label<S: Into<String>>(
+        &mut self,
+        buffer: &mut PixelBuffer,
+        text: S,
+        x: i32,
+        y: i32,
+    ) {
+        self.internal.draw_label(
+            buffer.pixels_mut(),
+            self.internal.default_font(),
+            text,
+            (x, y),
+        );
+    }
 }

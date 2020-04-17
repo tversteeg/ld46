@@ -13,7 +13,7 @@ use crate::{gui::Gui, input::Input, render::Render};
 use anyhow::Result;
 use miniquad::{
     conf::{Conf, Loading},
-    Context, EventHandler, KeyCode, KeyMods, UserData,
+    Context, EventHandler, KeyCode, KeyMods, MouseButton, UserData,
 };
 use specs_blit::{specs::prelude::*, PixelBuffer};
 
@@ -118,10 +118,20 @@ impl<'a, 'b> EventHandler for Game<'a, 'b> {
 
         // Render the GUI
         let mut gui = self.world.write_resource::<Gui>();
-        if self.started {
-        } else {
+        if !self.started {
             gui.render_startup(&mut buffer);
         }
+
+        gui.draw_label(
+            &mut buffer,
+            format!(
+                "({},{})",
+                self.world.read_resource::<Input>().mouse_x(),
+                self.world.read_resource::<Input>().mouse_y(),
+            ),
+            WIDTH as i32 - 90,
+            10,
+        );
 
         // Render the buffer
         self.render.render(ctx, &buffer);
@@ -149,6 +159,43 @@ impl<'a, 'b> EventHandler for Game<'a, 'b> {
 
         // Pass the input to the resource
         (*self.world.write_resource::<Input>()).handle_key(keycode, true);
+    }
+
+    fn mouse_button_down_event(
+        &mut self,
+        _ctx: &mut Context,
+        _button: MouseButton,
+        _x: f32,
+        _y: f32,
+    ) {
+        // Flash the screen for a bit
+        self.world
+            .create_entity()
+            .with(effect::ScreenFlash::new(color::FOREGROUND))
+            .with(entity::Lifetime::new(3.0))
+            .build();
+
+        (*self.world.write_resource::<Input>()).handle_mouse_button(true);
+    }
+
+    fn mouse_button_up_event(
+        &mut self,
+        _ctx: &mut Context,
+        _button: MouseButton,
+        _x: f32,
+        _y: f32,
+    ) {
+        (*self.world.write_resource::<Input>()).handle_mouse_button(false);
+    }
+
+    fn mouse_motion_event(&mut self, ctx: &mut Context, x: f32, y: f32) {
+        // Translate the screen position to our canvas position
+        let screen_size = ctx.screen_size();
+
+        let x = x / screen_size.0 * WIDTH as f32;
+        let y = y / screen_size.1 * HEIGHT as f32;
+
+        (*self.world.write_resource::<Input>()).handle_mouse_move(x as i32, y as i32);
     }
 }
 

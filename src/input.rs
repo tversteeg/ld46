@@ -6,6 +6,10 @@ pub struct Input {
     down: bool,
     left: bool,
     right: bool,
+
+    mouse_x: i32,
+    mouse_y: i32,
+    mouse_down: bool,
 }
 
 impl Input {
@@ -29,6 +33,16 @@ impl Input {
         self.right
     }
 
+    /// Get the mouse x position.
+    pub fn mouse_x(&self) -> i32 {
+        self.mouse_x
+    }
+
+    /// Get the mouse y position.
+    pub fn mouse_y(&self) -> i32 {
+        self.mouse_y
+    }
+
     /// Handle miniquad key events.
     pub fn handle_key(&mut self, code: KeyCode, is_down: bool) {
         match code {
@@ -46,5 +60,16 @@ impl Input {
             }
             _ => (),
         }
+    }
+
+    /// Handle miniquad mouse button events.
+    pub fn handle_mouse_button(&mut self, is_down: bool) {
+        self.mouse_down = is_down;
+    }
+
+    /// Handle miniquad mouse move events.
+    pub fn handle_mouse_move(&mut self, x: i32, y: i32) {
+        self.mouse_x = x;
+        self.mouse_y = y;
     }
 }
