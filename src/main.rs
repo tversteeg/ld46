@@ -1,3 +1,6 @@
+mod color;
+mod effect;
+mod entity;
 mod gui;
 mod input;
 mod particle;
@@ -45,6 +48,10 @@ impl<'a, 'b> Game<'a, 'b> {
         world.register::<particle::Particle>();
         world.register::<particle::ParticleEmitter>();
 
+        world.register::<entity::Lifetime>();
+
+        world.register::<effect::ScreenFlash>();
+
         // Load the sprite rendering component
         world.register::<specs_blit::Sprite>();
 
@@ -60,12 +67,13 @@ impl<'a, 'b> Game<'a, 'b> {
 
         // Setup the dispatcher with the blit system
         let dispatcher = DispatcherBuilder::new()
-            .with(particle::ParticleSystem, "particle", &[])
             .with(particle::ParticleEmitterSystem, "particle_emitter", &[])
+            .with(entity::LifetimeSystem, "lifetime", &[])
             .with(player::PlayerSystem, "player", &[])
             .with(physics::VelocitySystem, "velocity", &["player"])
             .with(sprite::SpritePositionSystem, "sprite_pos", &["velocity"])
             .with_thread_local(specs_blit::RenderSystem)
+            .with_thread_local(effect::ScreenFlashSystem)
             .build();
 
         // Setup the OpenGL render part
@@ -83,6 +91,13 @@ impl<'a, 'b> Game<'a, 'b> {
     pub fn start(&mut self) {
         // Spawn the initial game elements
         player::spawn_player(&mut self.world).expect("Couldn't spawn player");
+
+        // Flash the screen for a bit
+        self.world
+            .create_entity()
+            .with(effect::ScreenFlash::new(color::FOREGROUND))
+            .with(entity::Lifetime::new(5.0))
+            .build();
 
         self.started = true;
     }
@@ -112,7 +127,7 @@ impl<'a, 'b> EventHandler for Game<'a, 'b> {
         self.render.render(ctx, &buffer);
 
         // Clear the buffer with a black color
-        buffer.clear(0xFF30060B);
+        buffer.clear(color::BACKGROUND);
     }
 
     fn key_up_event(&mut self, _ctx: &mut Context, keycode: KeyCode, _keymods: KeyMods) {

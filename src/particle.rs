@@ -1,19 +1,19 @@
-use crate::physics::{Position, Velocity};
+use crate::{
+    entity::Lifetime,
+    physics::{Position, Velocity},
+};
 use specs_blit::{
     specs::{
-        Component, DenseVecStorage, Entities, Join, LazyUpdate, Read, ReadStorage, System,
-        VecStorage, WriteStorage,
+        Component, DenseVecStorage, Entities, Join, LazyUpdate, NullStorage, Read, ReadStorage,
+        System,
     },
     Sprite, SpriteRef,
 };
 
 /// A particle that moves around but doesn't collide.
 #[derive(Component, Debug, Default)]
-#[storage(VecStorage)]
-pub struct Particle {
-    /// When this is zero the particle will be destroyed.
-    time_left: f64,
-}
+#[storage(NullStorage)]
+pub struct Particle;
 
 /// A component that emits particles while it lives.
 #[derive(Component, Debug)]
@@ -39,22 +39,6 @@ impl ParticleEmitter {
     }
 }
 
-/// System handles particle life.
-pub struct ParticleSystem;
-impl<'a> System<'a> for ParticleSystem {
-    type SystemData = (Entities<'a>, WriteStorage<'a, Particle>);
-
-    fn run(&mut self, (entities, mut particle): Self::SystemData) {
-        for (entity, particle) in (&*entities, &mut particle).join() {
-            particle.time_left -= 1.0;
-            if particle.time_left <= 0.0 {
-                // Remove the particle entity when it's dead
-                let _ = entities.delete(entity);
-            }
-        }
-    }
-}
-
 /// System that will spawn particles.
 pub struct ParticleEmitterSystem;
 impl<'a> System<'a> for ParticleEmitterSystem {
@@ -69,12 +53,9 @@ impl<'a> System<'a> for ParticleEmitterSystem {
         for (emitter, pos) in (&emitter, &pos).join() {
             // Spawn a new particle
             let particle = entities.create();
-            updater.insert(
-                particle,
-                Particle {
-                    time_left: emitter.lifetime,
-                },
-            );
+            updater.insert(particle, Particle);
+            // Set the destruction time of the particle
+            updater.insert(particle, Lifetime::new(emitter.lifetime));
             // Clone the position of the emitter
             updater.insert(particle, pos.clone());
             // Add a new random velocity
