@@ -112,7 +112,7 @@ impl<'a, 'b> EventHandler for Game<'a, 'b> {
         self.render.render(ctx, &buffer);
 
         // Clear the buffer with a black color
-        buffer.clear(0xFF000000);
+        buffer.clear(0xFF30060B);
     }
 
     fn key_up_event(&mut self, _ctx: &mut Context, keycode: KeyCode, _keymods: KeyMods) {
