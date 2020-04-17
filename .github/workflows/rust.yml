@@ -69,7 +69,6 @@ jobs:
           mkdir www
           cp target/wasm32-unknown-unknown/release/*.wasm www
           cp *.html www
-          cp *.js www
 
       - name: deploy to github pages
         uses: s0/git-publish-subdir-action@master
