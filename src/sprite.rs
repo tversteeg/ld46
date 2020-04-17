@@ -40,3 +40,10 @@ pub fn generate(
 
     specs_blit::load(buf, rotations)
 }
+
+/// Generate a single pixel sprite.
+pub fn single_pixel(color: Color) -> Result<SpriteRef> {
+    let buf = BlitBuffer::from_buffer(&[color.u32()], 1, Color::from_u32(0));
+
+    specs_blit::load(buf, 1)
+}

@@ -1,9 +1,10 @@
 use derive_deref::{Deref, DerefMut};
-use specs_blit::specs::{Component, DenseVecStorage, Join, ReadStorage, System, WriteStorage};
+use specs_blit::specs::{Component, Join, ReadStorage, System, VecStorage, WriteStorage};
 
 type Vec2 = vek::Vec2<f64>;
 
-#[derive(Component, Debug, Default, Deref, DerefMut)]
+#[derive(Component, Debug, Default, Deref, DerefMut, Clone)]
+#[storage(VecStorage)]
 pub struct Position(pub Vec2);
 
 impl Position {
@@ -12,12 +13,24 @@ impl Position {
     }
 }
 
-#[derive(Component, Debug, Default, Deref, DerefMut)]
+#[derive(Component, Debug, Default, Deref, DerefMut, Clone)]
+#[storage(VecStorage)]
 pub struct Velocity(pub Vec2);
 
 impl Velocity {
     pub fn new(x: f64, y: f64) -> Self {
         Self(Vec2::new(x, y))
+    }
+
+    /// Construct a new velocity where the X and Y velocity are randomly placed inside the supplied
+    /// range.
+    pub fn from_random_range(range: f64) -> Self {
+        let rand_x =
+            unsafe { miniquad::rand() as f64 / miniquad::RAND_MAX as f64 } * 2.0 - 1.0 * range;
+        let rand_y =
+            unsafe { miniquad::rand() as f64 / miniquad::RAND_MAX as f64 } * 2.0 - 1.0 * range;
+
+        Self(Vec2::new(rand_x, rand_y))
     }
 }
 
@@ -33,4 +46,5 @@ impl<'a> System<'a> for VelocitySystem {
 }
 
 #[derive(Component, Debug, Default, Deref, DerefMut)]
+#[storage(VecStorage)]
 pub struct Speed(pub f64);

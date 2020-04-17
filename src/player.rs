@@ -1,12 +1,14 @@
 use crate::{
     input::Input,
+    particle::ParticleEmitter,
     physics::{Position, Speed, Velocity},
     sprite,
 };
 use anyhow::Result;
 use specs_blit::{
+    blit::Color,
     specs::{
-        Builder, Component, DenseVecStorage, Join, Read, ReadStorage, System, World, WorldExt,
+        Builder, Component, Join, NullStorage, Read, ReadStorage, System, World, WorldExt,
         WriteStorage,
     },
     Sprite,
@@ -15,6 +17,7 @@ use sprite_gen::{MaskValue::*, Options};
 
 /// Component to set something as controllable.
 #[derive(Component, Debug, Default)]
+#[storage(NullStorage)]
 pub struct Player;
 
 /// System processes the player input.
@@ -84,6 +87,10 @@ pub fn spawn_player(world: &mut World) -> Result<()> {
     ];
 
     let sprite = sprite::generate(width, options, &data, 4)?;
+
+    // TODO don't generate this every time
+    let particle_sprite = sprite::single_pixel(Color::from_u32(0xFF))?;
+
     world
         .create_entity()
         .with(Sprite::new(sprite))
@@ -91,6 +98,7 @@ pub fn spawn_player(world: &mut World) -> Result<()> {
         .with(Position::new(0.0, 0.0))
         .with(Velocity::new(0.0, 0.0))
         .with(Speed(0.1))
+        .with(ParticleEmitter::new(10.0, particle_sprite))
         .build();
 
     Ok(())

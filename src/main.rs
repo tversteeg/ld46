@@ -1,5 +1,6 @@
 mod gui;
 mod input;
+mod particle;
 mod physics;
 mod player;
 mod render;
@@ -41,6 +42,9 @@ impl<'a, 'b> Game<'a, 'b> {
 
         world.register::<player::Player>();
 
+        world.register::<particle::Particle>();
+        world.register::<particle::ParticleEmitter>();
+
         // Load the sprite rendering component
         world.register::<specs_blit::Sprite>();
 
@@ -56,6 +60,8 @@ impl<'a, 'b> Game<'a, 'b> {
 
         // Setup the dispatcher with the blit system
         let dispatcher = DispatcherBuilder::new()
+            .with(particle::ParticleSystem, "particle", &[])
+            .with(particle::ParticleEmitterSystem, "particle_emitter", &[])
             .with(player::PlayerSystem, "player", &[])
             .with(physics::VelocitySystem, "velocity", &["player"])
             .with(sprite::SpritePositionSystem, "sprite_pos", &["velocity"])
