@@ -197,11 +197,11 @@ impl<'a, 'b> Game<'a, 'b> {
         match *phase {
             Phase::Menu => {
                 // Render the GUI
-                gui.draw_label(&mut buffer, "Press SPACE to play!", 110, 200);
+                gui.draw_label(&mut buffer, "Click to play!", 130, 145);
             }
             Phase::Setup => {
                 gui.draw_label(&mut buffer, format!("Level {}", self.level), 160, 20);
-                gui.draw_label(&mut buffer, "Press SPACE to start!", 105, 200);
+                gui.draw_label(&mut buffer, "Click to start!", 120, 200);
 
                 gui.draw_label(
                     &mut buffer,
@@ -212,25 +212,23 @@ impl<'a, 'b> Game<'a, 'b> {
             }
             Phase::Play | Phase::WaitingForLastEnemy => {
                 let lives = self.world.read_resource::<Lives>();
-                lives.render(&mut buffer, 100, 5);
+                lives.render(&mut buffer, 20, 5);
+
+                gui.draw_label(&mut buffer, format!("Level {}", self.level), 70, 5);
+
+                gui.draw_label(
+                    &mut buffer,
+                    format!("Enemies {}", self.world.read_resource::<EnemiesLeft>().0),
+                    150,
+                    5,
+                );
 
                 gui.draw_label(
                     &mut buffer,
                     format!("Scrap {}", self.world.read_resource::<Wallet>().money()),
-                    300,
+                    250,
                     5,
                 );
-
-                gui.draw_label(&mut buffer, format!("Level {}", self.level), 20, 5);
-
-                if *phase == Phase::Play {
-                    gui.draw_label(
-                        &mut buffer,
-                        format!("Enemies {}", self.world.read_resource::<EnemiesLeft>().0),
-                        200,
-                        5,
-                    );
-                }
             }
             Phase::GameOver => {
                 gui.draw_label(&mut buffer, "GAME OVER!", 160, 130);
@@ -284,14 +282,6 @@ impl<'a, 'b> EventHandler for Game<'a, 'b> {
         _keymods: KeyMods,
         _repeat: bool,
     ) {
-        // Start the game when space is pressed
-        let phase = (*self.world.read_resource::<Phase>()).clone();
-        if phase == Phase::Menu && keycode == KeyCode::Space {
-            self.switch_phase(Phase::Initialize);
-        } else if phase == Phase::Setup && keycode == KeyCode::Space {
-            self.switch_phase(Phase::Play);
-        }
-
         // Pass the input to the resource
         (*self.world.write_resource::<Input>()).handle_key(keycode, true);
     }
@@ -303,6 +293,14 @@ impl<'a, 'b> EventHandler for Game<'a, 'b> {
         _x: f32,
         _y: f32,
     ) {
+        // Start the game
+        let phase = (*self.world.read_resource::<Phase>()).clone();
+        if phase == Phase::Menu {
+            self.switch_phase(Phase::Initialize);
+        } else if phase == Phase::Setup {
+            self.switch_phase(Phase::Play);
+        }
+
         (*self.world.write_resource::<Input>()).handle_mouse_button(true);
     }
 
