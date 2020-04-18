@@ -14,16 +14,6 @@ impl Gui {
         }
     }
 
-    /// Render the startup GUI on the pixel buffer.
-    pub fn render_startup(&mut self, buffer: &mut PixelBuffer) {
-        self.internal.draw_label(
-            buffer.pixels_mut(),
-            self.internal.default_font(),
-            "Press SPACE to play..",
-            (20, 20),
-        );
-    }
-
     /// Draw a label.
     pub fn draw_label<S: Into<String>>(
         &mut self,

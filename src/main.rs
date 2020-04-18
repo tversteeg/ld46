@@ -4,12 +4,13 @@ mod entity;
 mod gui;
 mod input;
 mod particle;
+mod phase;
 mod physics;
 mod player;
 mod render;
 mod sprite;
 
-use crate::{gui::Gui, input::Input, render::Render};
+use crate::{gui::Gui, input::Input, phase::Phase, render::Render};
 use anyhow::Result;
 use miniquad::{
     conf::{Conf, Loading},
@@ -28,8 +29,8 @@ struct Game<'a, 'b> {
     dispatcher: Dispatcher<'a, 'b>,
     /// Our wrapper around the OpenGL calls.
     render: Render,
-    /// Whether our game started or not.
-    started: bool,
+
+    phase: Phase,
 }
 
 impl<'a, 'b> Game<'a, 'b> {
@@ -42,6 +43,7 @@ impl<'a, 'b> Game<'a, 'b> {
         world.register::<physics::Position>();
         world.register::<physics::Velocity>();
         world.register::<physics::Speed>();
+        world.register::<physics::Drag>();
 
         world.register::<player::Player>();
 
@@ -71,6 +73,7 @@ impl<'a, 'b> Game<'a, 'b> {
             .with(entity::LifetimeSystem, "lifetime", &[])
             .with(player::PlayerSystem, "player", &[])
             .with(physics::VelocitySystem, "velocity", &["player"])
+            .with(physics::DragSystem, "drag", &["velocity"])
             .with(sprite::SpritePositionSystem, "sprite_pos", &["velocity"])
             .with_thread_local(specs_blit::RenderSystem)
             .with_thread_local(effect::ScreenFlashSystem)
@@ -79,27 +82,50 @@ impl<'a, 'b> Game<'a, 'b> {
         // Setup the OpenGL render part
         let render = Render::new(ctx, WIDTH, HEIGHT);
 
-        Ok(Self {
+        let mut game = Self {
             world,
             dispatcher,
             render,
-            started: false,
-        })
+            phase: Phase::Setup,
+        };
+        game.switch_phase(Phase::Play);
+
+        Ok(game)
     }
 
-    /// Start the game.
-    pub fn start(&mut self) {
-        // Spawn the initial game elements
-        player::spawn_player(&mut self.world).expect("Couldn't spawn player");
+    pub fn switch_phase(&mut self, phase: Phase) {
+        match phase {
+            Phase::Menu => {
+                // Flash the screen for a bit
+                self.world
+                    .create_entity()
+                    .with(effect::ScreenFlash::new(color::FOREGROUND))
+                    .with(entity::Lifetime::new(5.0))
+                    .build();
+            }
+            Phase::Setup => {}
+            Phase::Play => {
+                // Spawn the paddle
+                player::spawn_player(&mut self.world).expect("Couldn't spawn player");
+            }
+        }
 
-        // Flash the screen for a bit
-        self.world
-            .create_entity()
-            .with(effect::ScreenFlash::new(color::FOREGROUND))
-            .with(entity::Lifetime::new(5.0))
-            .build();
+        self.phase = phase;
+    }
 
-        self.started = true;
+    pub fn render_phase(&mut self) {
+        let phase = self.phase;
+
+        let mut buffer = self.world.write_resource::<PixelBuffer>();
+
+        match phase {
+            Phase::Menu => {
+                // Render the GUI
+                let mut gui = self.world.write_resource::<Gui>();
+                gui.draw_label(&mut buffer, "Press SPACE to play!", 20, 20);
+            }
+            _ => (),
+        }
     }
 }
 
@@ -113,25 +139,10 @@ impl<'a, 'b> EventHandler for Game<'a, 'b> {
     }
 
     fn draw(&mut self, ctx: &mut Context) {
+        self.render_phase();
+
         // Get the pixel buffer to render it
         let mut buffer = self.world.write_resource::<PixelBuffer>();
-
-        // Render the GUI
-        let mut gui = self.world.write_resource::<Gui>();
-        if !self.started {
-            gui.render_startup(&mut buffer);
-        }
-
-        gui.draw_label(
-            &mut buffer,
-            format!(
-                "({},{})",
-                self.world.read_resource::<Input>().mouse_x(),
-                self.world.read_resource::<Input>().mouse_y(),
-            ),
-            WIDTH as i32 - 90,
-            10,
-        );
 
         // Render the buffer
         self.render.render(ctx, &buffer);
@@ -153,8 +164,8 @@ impl<'a, 'b> EventHandler for Game<'a, 'b> {
         _repeat: bool,
     ) {
         // Start the game when space is pressed
-        if !self.started && keycode == KeyCode::Space {
-            self.start();
+        if self.phase == Phase::Menu && keycode == KeyCode::Space {
+            self.switch_phase(Phase::Setup);
         }
 
         // Pass the input to the resource
@@ -168,13 +179,6 @@ impl<'a, 'b> EventHandler for Game<'a, 'b> {
         _x: f32,
         _y: f32,
     ) {
-        // Flash the screen for a bit
-        self.world
-            .create_entity()
-            .with(effect::ScreenFlash::new(color::FOREGROUND))
-            .with(entity::Lifetime::new(3.0))
-            .build();
-
         (*self.world.write_resource::<Input>()).handle_mouse_button(true);
     }
 

@@ -1,7 +1,7 @@
 use crate::{
     input::Input,
     particle::ParticleEmitter,
-    physics::{Position, Speed, Velocity},
+    physics::{Drag, Position, Speed, Velocity},
     sprite,
 };
 use anyhow::Result;
@@ -14,6 +14,9 @@ use specs_blit::{
     Sprite,
 };
 use sprite_gen::{MaskValue::*, Options};
+
+const PLAYER_SPEED: f64 = 1.0;
+const PLAYER_DRAG: f64 = 0.85;
 
 /// Component to set something as controllable.
 #[derive(Component, Debug, Default)]
@@ -38,12 +41,6 @@ impl<'a> System<'a> for PlayerSystem {
             if input.down_pressed() {
                 vel.0.y += speed.0;
             }
-            if input.left_pressed() {
-                vel.0.x -= speed.0;
-            }
-            if input.right_pressed() {
-                vel.0.x += speed.0;
-            }
         }
     }
 }
@@ -51,42 +48,41 @@ impl<'a> System<'a> for PlayerSystem {
 /// Spawn a new player.
 pub fn spawn_player(world: &mut World) -> Result<()> {
     let (width, _height, options) = (
-        12,
-        20,
+        11,
+        22,
         Options {
-            mirror_x: true,
-            mirror_y: false,
+            mirror_x: false,
+            mirror_y: true,
             colored: true,
-            edge_brightness: 0.3,
-            color_variations: 0.21,
-            brightness_noise: 0.31,
-            saturation: 0.5,
+            edge_brightness: 0.33511457,
+            color_variations: 0.01,
+            brightness_noise: 0.50169325,
+            saturation: 0.4671184,
             seed: unsafe { miniquad::rand() as u64 },
         },
     );
     let data = [
-        Empty, Empty, Empty, Empty, Empty, Empty, Empty, Empty, Empty, Empty, Empty, Empty, Empty,
-        Empty, Empty, Empty, Empty, Empty, Empty, Empty, Empty, Empty, Empty, Body1, Empty, Empty,
-        Empty, Empty, Empty, Empty, Body1, Body1, Body1, Body1, Body1, Body1, Empty, Empty, Empty,
-        Empty, Empty, Body1, Body2, Body2, Body2, Body2, Body1, Body1, Empty, Empty, Empty, Empty,
-        Empty, Empty, Body1, Body1, Body1, Body1, Body1, Body1, Empty, Empty, Empty, Empty, Empty,
-        Empty, Empty, Body1, Body1, Body1, Body2, Body1, Empty, Empty, Body1, Empty, Empty, Empty,
-        Empty, Body1, Body1, Body1, Body1, Body2, Empty, Empty, Body1, Empty, Empty, Empty, Body1,
-        Body1, Body1, Body1, Body1, Body2, Empty, Empty, Body1, Empty, Empty, Body1, Body1, Body1,
-        Body1, Body1, Body2, Body2, Empty, Body1, Body1, Empty, Empty, Body1, Body1, Body1, Body1,
-        Body1, Body2, Body2, Empty, Body1, Empty, Empty, Empty, Body1, Body1, Body2, Body2, Body1,
-        Body2, Body2, Empty, Body1, Empty, Empty, Body2, Body2, Body2, Body2, Body2, Body2, Body2,
-        Body2, Empty, Body1, Empty, Empty, Body2, Body2, Body2, Body1, Body2, Body2, Body1, Body2,
-        Empty, Body1, Empty, Body2, Body2, Body1, Body2, Body1, Body2, Body2, Body1, Body2, Empty,
-        Body1, Body2, Body2, Body1, Body1, Body2, Body1, Body2, Body2, Body1, Body2, Empty, Body1,
-        Body2, Empty, Body1, Body1, Body2, Body1, Body2, Body2, Body1, Body2, Empty, Body2, Body2,
-        Empty, Body1, Body1, Body2, Body2, Body2, Body1, Body1, Body2, Empty, Body2, Body2, Body2,
-        Body2, Body2, Body2, Body2, Body1, Body1, Body1, Body1, Empty, Body1, Body1, Body1, Body1,
-        Body1, Body1, Body1, Body1, Body1, Body1, Body1, Empty, Empty, Empty, Empty, Empty, Empty,
-        Empty, Empty, Empty, Empty, Empty, Empty,
+        Empty, Empty, Empty, Empty, Empty, Empty, Empty, Empty, Empty, Empty, Empty, Body1, Body1,
+        Body1, Body1, Body1, Body1, Body1, Body1, Body1, Solid, Empty, Body2, Body2, Body2, Body2,
+        Body2, Empty, Empty, Empty, Body1, Solid, Empty, Body2, Body2, Body2, Empty, Body2, Body2,
+        Body2, Body2, Body1, Empty, Empty, Empty, Body1, Body1, Empty, Empty, Empty, Body2, Empty,
+        Body1, Empty, Empty, Empty, Body1, Empty, Empty, Solid, Solid, Body2, Empty, Body1, Solid,
+        Empty, Empty, Empty, Empty, Empty, Empty, Empty, Body2, Empty, Body1, Solid, Empty, Empty,
+        Solid, Solid, Empty, Empty, Solid, Body2, Body2, Body1, Empty, Empty, Empty, Body1, Body1,
+        Empty, Empty, Body1, Body2, Body2, Body1, Empty, Empty, Empty, Body1, Empty, Body1, Empty,
+        Body1, Empty, Body2, Body1, Solid, Empty, Empty, Empty, Body1, Empty, Empty, Body1, Body1,
+        Body2, Body1, Solid, Empty, Empty, Empty, Body1, Empty, Empty, Body1, Body1, Body2, Body1,
+        Empty, Empty, Empty, Empty, Body1, Empty, Empty, Empty, Empty, Empty, Body1, Empty, Empty,
+        Empty, Body2, Body2, Body2, Empty, Body1, Body2, Empty, Body1, Solid, Empty, Empty, Empty,
+        Body2, Empty, Empty, Body1, Empty, Empty, Body1, Solid, Empty, Empty, Empty, Body2, Empty,
+        Empty, Empty, Body1, Empty, Body1, Empty, Empty, Empty, Empty, Body2, Empty, Body1, Empty,
+        Empty, Empty, Body1, Empty, Empty, Empty, Empty, Body2, Empty, Body1, Empty, Empty, Empty,
+        Body1, Solid, Empty, Empty, Empty, Body2, Empty, Body1, Empty, Empty, Body2, Body1, Solid,
+        Empty, Empty, Empty, Body2, Empty, Body1, Body1, Empty, Body2, Body1, Empty, Empty, Empty,
+        Empty, Body2, Empty, Body1, Body1, Empty, Body2, Body1, Empty, Empty, Empty, Body2, Body2,
+        Body2, Body1, Body1, Empty, Empty, Body1, Solid, Empty,
     ];
-
-    let sprite = sprite::generate(width, options, &data, 4)?;
+    let sprite = sprite::generate(width, options, &data, 1)?;
 
     // TODO don't generate this every time
     let particle_sprite = sprite::single_pixel(Color::from_u32(0xFF))?;
@@ -95,9 +91,10 @@ pub fn spawn_player(world: &mut World) -> Result<()> {
         .create_entity()
         .with(Sprite::new(sprite))
         .with(Player)
-        .with(Position::new(0.0, 0.0))
+        .with(Position::new(5.0, 200.0))
         .with(Velocity::new(0.0, 0.0))
-        .with(Speed(0.1))
+        .with(Drag(PLAYER_DRAG))
+        .with(Speed(PLAYER_SPEED))
         .with(ParticleEmitter::new(10.0, particle_sprite))
         .build();
 

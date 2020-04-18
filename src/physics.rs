@@ -34,6 +34,25 @@ impl Velocity {
     }
 }
 
+#[derive(Component, Debug, Default, Deref, DerefMut, Clone)]
+#[storage(VecStorage)]
+pub struct Drag(pub f64);
+
+#[derive(Component, Debug, Default, Deref, DerefMut)]
+#[storage(VecStorage)]
+pub struct Speed(pub f64);
+
+pub struct DragSystem;
+impl<'a> System<'a> for DragSystem {
+    type SystemData = (ReadStorage<'a, Drag>, WriteStorage<'a, Velocity>);
+
+    fn run(&mut self, (drag, mut vel): Self::SystemData) {
+        for (drag, vel) in (&drag, &mut vel).join() {
+            vel.0 *= drag.0;
+        }
+    }
+}
+
 pub struct VelocitySystem;
 impl<'a> System<'a> for VelocitySystem {
     type SystemData = (ReadStorage<'a, Velocity>, WriteStorage<'a, Position>);
@@ -44,7 +63,3 @@ impl<'a> System<'a> for VelocitySystem {
         }
     }
 }
-
-#[derive(Component, Debug, Default, Deref, DerefMut)]
-#[storage(VecStorage)]
-pub struct Speed(pub f64);
