@@ -3,18 +3,19 @@ use crate::{
     particle::ParticleEmitter, phase::Phase, physics::*, player::Player, random, ship::Ships,
     sprite::Sprites,
 };
-use specs_blit::{specs::*, Sprite, SpriteRef};
+use derive_deref::{Deref, DerefMut};
+use specs_blit::{specs::*, Sprite};
 
 const ENEMY_VELOCITY_RESOURCES_MIN_FACTOR_X: f64 = 0.1;
 const ENEMY_VELOCITY_RESOURCES_MAX_FACTOR_X: f64 = 0.9;
 const ENEMY_VELOCITY_RESOURCES_MIN_FACTOR_Y: f64 = 0.02;
 const ENEMY_VELOCITY_RESOURCES_MAX_FACTOR_Y: f64 = 0.5;
-const ENEMY_VELOCITY_RESOURCES_SPEED_X: f64 = 0.1;
+const ENEMY_VELOCITY_RESOURCES_SPEED_X: f64 = 0.05;
 const ENEMY_VELOCITY_RESOURCES_SPEED_Y: f64 = 0.05;
-const ENEMY_VELOCITY_MIN_SPEED: f64 = 1.0;
+const ENEMY_VELOCITY_MIN_SPEED: f64 = 2.0;
 const ENEMY_ZIGZAG_RESOURCES_MIN_FACTOR: f64 = 0.1;
 const ENEMY_ZIGZAG_RESOURCES_MAX_FACTOR: f64 = 0.9;
-const ENEMY_ZIGZAG_RESOURCES_SPEED: f64 = 0.01;
+const ENEMY_ZIGZAG_RESOURCES_SPEED: f64 = 0.1;
 
 const ENEMY_ENGINE_PARTICLE_LIFETIME: f64 = 10.0;
 const ENEMY_DEAD_EMITTER_LIFETIME: f64 = 5.0;
@@ -32,19 +33,11 @@ pub enum EnemyType {
 }
 
 impl EnemyType {
-    pub fn sprite(self, ships: &Ships) -> SpriteRef {
-        match self {
-            EnemyType::Small => ships.enemy_small.clone(),
-            EnemyType::Medium => ships.enemy_medium.clone(),
-            EnemyType::Big => ships.enemy_big.clone(),
-        }
-    }
-
     pub fn bb(self) -> BoundingBox {
         match self {
             EnemyType::Small => BoundingBox::new(10.0, 16.0),
             EnemyType::Medium => BoundingBox::new(13.0, 20.0),
-            _ => unimplemented!(),
+            EnemyType::Big => BoundingBox::new(22.0, 24.0),
         }
     }
 }
@@ -86,7 +79,7 @@ impl EnemyEmitter {
             .collect::<Vec<_>>();
 
         // Always spawn the first one immediately
-        spawner[0].0 = 5.0;
+        spawner[0].0 = 30.0;
 
         Self {
             spawner,
@@ -105,17 +98,15 @@ impl EnemyEmitter {
         let enemy = entities.create();
         updater.insert(enemy, Enemy);
 
-        let type_ = if resources < 50.0 {
-            EnemyType::Small
-        } else if resources < 100.0 {
-            resources -= 50.0;
+        let type_ = if resources > 100.0 && random::bool() {
+            resources -= 40.0;
+            EnemyType::Big
+        } else if resources > 50.0 && random::bool() {
+            resources -= 20.0;
             EnemyType::Medium
         } else {
-            resources -= 100.0;
-            EnemyType::Big
+            EnemyType::Small
         };
-
-        updater.insert(enemy, Sprite::new(type_.sprite(ships)));
 
         updater.insert(
             enemy,
@@ -129,9 +120,10 @@ impl EnemyEmitter {
         updater.insert(
             enemy,
             ParticleEmitter::new(
-                ENEMY_ENGINE_PARTICLE_LIFETIME,
+                ENEMY_ENGINE_PARTICLE_LIFETIME + resources / 100.0,
                 sprites.white_particle.clone(),
             )
+            .with_dispersion(1.0 - resources / 200.0)
             .with_offset(bb.to_aabr(&Position::new(0.0, 0.0)).center()),
         );
 
@@ -142,6 +134,8 @@ impl EnemyEmitter {
             ENEMY_VELOCITY_RESOURCES_MAX_FACTOR_X,
         ) * resources;
         resources -= x_velocity_resources;
+
+        updater.insert(enemy, Sprite::new(ships.enemy(type_)));
 
         if random::bool() {
             // Straight pattern
@@ -185,23 +179,31 @@ impl EnemyEmitter {
             );
         }
     }
+
+    pub fn enemies_left(&self) -> usize {
+        self.spawner.len()
+    }
 }
 
 #[derive(Component, Debug, Default)]
 #[storage(NullStorage)]
 pub struct Enemy;
 
+#[derive(Debug, Default, Deref, DerefMut)]
+pub struct EnemiesLeft(pub usize);
+
 pub struct EnemySystem;
 impl<'a> System<'a> for EnemySystem {
     type SystemData = (
         Entities<'a>,
+        Write<'a, Phase>,
         Option<Write<'a, Lives>>,
         ReadStorage<'a, Enemy>,
         ReadStorage<'a, Position>,
         Read<'a, LazyUpdate>,
     );
 
-    fn run(&mut self, (entities, lives, enemy, pos, updater): Self::SystemData) {
+    fn run(&mut self, (entities, mut phase, lives, enemy, pos, updater): Self::SystemData) {
         if let Some(mut lives) = lives {
             for (entity, pos, _) in (&*entities, &pos, &enemy).join() {
                 if pos.0.x <= 0.0 {
@@ -214,6 +216,10 @@ impl<'a> System<'a> for EnemySystem {
                     let _ = entities.delete(entity);
                 }
             }
+        }
+
+        if *phase == Phase::WaitingForLastEnemy && enemy.is_empty() {
+            *phase = Phase::SwitchTo(Box::new(Phase::Setup));
         }
     }
 }
@@ -265,19 +271,22 @@ impl<'a> System<'a> for EnemyEmitterSystem {
         ReadExpect<'a, Sprites>,
         Option<Read<'a, Ships>>,
         Write<'a, Phase>,
+        Write<'a, EnemiesLeft>,
         WriteStorage<'a, EnemyEmitter>,
         Read<'a, LazyUpdate>,
     );
 
     fn run(
         &mut self,
-        (entities, sprites, ships, mut phase, mut emitter, updater): Self::SystemData,
+        (entities, sprites, ships, mut phase, mut enemies_left, mut emitter, updater): Self::SystemData,
     ) {
         if let Some(ships) = ships {
-            for emitter in (&mut emitter).join() {
+            for (entity, emitter) in (&*entities, &mut emitter).join() {
+                enemies_left.0 = emitter.enemies_left();
                 if emitter.current_time >= emitter.total_time {
                     // Time ran out, change to another phase
-                    *phase = Phase::SwitchTo(Box::new(Phase::Setup));
+                    *phase = Phase::WaitingForLastEnemy;
+                    let _ = entities.delete(entity);
                     break;
                 }
                 emitter.current_time += 1.0;

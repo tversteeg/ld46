@@ -9,3 +9,9 @@ pub fn bool() -> bool {
 
     r > miniquad::RAND_MAX as i32 / 2
 }
+
+pub fn index<T>(v: &Vec<T>) -> &T {
+    let r = unsafe { miniquad::rand() } as usize / (miniquad::RAND_MAX as usize / v.len());
+
+    &v[r]
+}

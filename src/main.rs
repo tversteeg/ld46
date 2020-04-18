@@ -15,7 +15,9 @@ mod render;
 mod ship;
 mod sprite;
 
-use crate::{gui::Gui, input::Input, lives::Lives, phase::Phase, render::Render};
+use crate::{
+    enemy::EnemiesLeft, gui::Gui, input::Input, lives::Lives, phase::Phase, render::Render,
+};
 use anyhow::Result;
 use miniquad::{
     conf::{Conf, Loading},
@@ -26,6 +28,9 @@ use specs_blit::{specs::prelude::*, PixelBuffer};
 pub const WIDTH: usize = 400;
 pub const HEIGHT: usize = 300;
 
+const LEVEL_TIME_SCALE: f64 = 120.0;
+const LEVEL_RESOURCES_SCALE: f64 = 100.0;
+
 /// Our game state.
 struct Game<'a, 'b> {
     /// The specs world.
@@ -35,7 +40,7 @@ struct Game<'a, 'b> {
     /// Our wrapper around the OpenGL calls.
     render: Render,
 
-    level: u8,
+    level: f64,
 }
 
 impl<'a, 'b> Game<'a, 'b> {
@@ -81,6 +86,9 @@ impl<'a, 'b> Game<'a, 'b> {
         // The current phase
         world.insert(Phase::default());
 
+        // Enemies left
+        world.insert(EnemiesLeft::default());
+
         // Setup the dispatcher with the blit system
         let dispatcher = DispatcherBuilder::new()
             .with(particle::ParticleEmitterSystem, "particle_emitter", &[])
@@ -108,9 +116,9 @@ impl<'a, 'b> Game<'a, 'b> {
             world,
             dispatcher,
             render,
-            level: 1,
+            level: 1.0,
         };
-        game.switch_phase(Phase::Menu);
+        game.switch_phase(Phase::default());
 
         Ok(game)
     }
@@ -125,27 +133,31 @@ impl<'a, 'b> Game<'a, 'b> {
         self.world.delete_all();
 
         match phase {
-            Phase::Menu => {
-                // Flash the screen for a bit
-                self.world
-                    .create_entity()
-                    .with(effect::ScreenFlash::new(color::FOREGROUND))
-                    .with(entity::Lifetime::new(5.0))
-                    .build();
-            }
+            Phase::Menu => {}
             Phase::Initialize => {
                 // Generate the ships
                 self.world.insert(ship::Ships::generate());
 
                 self.switch_phase(Phase::Play);
             }
-            Phase::Setup => {}
+            Phase::Setup => {
+                self.level += 1.0;
+            }
             Phase::Play => {
+                self.world
+                    .create_entity()
+                    .with(effect::ScreenFlash::new(color::FOREGROUND))
+                    .with(entity::Lifetime::new(5.0))
+                    .build();
+
                 self.world.insert(Lives::new(3));
 
                 self.world
                     .create_entity()
-                    .with(enemy::EnemyEmitter::new(200.0, 30.0 * 60.0))
+                    .with(enemy::EnemyEmitter::new(
+                        200.0 + self.level * LEVEL_RESOURCES_SCALE,
+                        20.0 * 60.0 + self.level * LEVEL_TIME_SCALE,
+                    ))
                     .build();
 
                 // Spawn the paddle
@@ -158,25 +170,33 @@ impl<'a, 'b> Game<'a, 'b> {
     pub fn render_phase(&mut self) {
         let phase = self.world.read_resource::<Phase>();
 
+        let mut buffer = self.world.write_resource::<PixelBuffer>();
+        let mut gui = self.world.write_resource::<Gui>();
         match *phase {
             Phase::Menu => {
-                let mut buffer = self.world.write_resource::<PixelBuffer>();
-
                 // Render the GUI
-                let mut gui = self.world.write_resource::<Gui>();
-                gui.draw_label(&mut buffer, "Press SPACE to play!", 20, 20);
+                gui.draw_label(&mut buffer, "Press SPACE to play!", 110, 200);
             }
-            Phase::Play => {
-                let mut buffer = self.world.write_resource::<PixelBuffer>();
+            Phase::Setup => {
+                gui.draw_label(&mut buffer, format!("Level: {}", self.level), 160, 20);
+                gui.draw_label(&mut buffer, "Press SPACE to start!", 105, 200);
+            }
+            Phase::Play | Phase::WaitingForLastEnemy => {
                 let lives = self.world.read_resource::<Lives>();
                 lives.render(&mut buffer, 100, 5);
 
-                let mut gui = self.world.write_resource::<Gui>();
-                gui.draw_label(&mut buffer, format!("Level {}", self.level), 20, 5);
+                gui.draw_label(&mut buffer, format!("Level: {}", self.level), 20, 5);
+
+                if *phase == Phase::Play {
+                    gui.draw_label(
+                        &mut buffer,
+                        format!("Enemies: {}", self.world.read_resource::<EnemiesLeft>().0),
+                        200,
+                        5,
+                    );
+                }
             }
             Phase::GameOver => {
-                let mut buffer = self.world.write_resource::<PixelBuffer>();
-                let mut gui = self.world.write_resource::<Gui>();
                 gui.draw_label(&mut buffer, "GAME OVER!", 20, 20);
             }
             _ => (),
@@ -193,7 +213,9 @@ impl<'a, 'b> EventHandler for Game<'a, 'b> {
         self.world.maintain();
 
         let mut phase = (*self.world.read_resource::<Phase>()).clone();
-        if phase == Phase::Play && self.world.read_resource::<Lives>().is_dead() {
+        if (phase == Phase::Play || phase == Phase::WaitingForLastEnemy)
+            && self.world.read_resource::<Lives>().is_dead()
+        {
             phase = Phase::SwitchTo(Box::new(Phase::GameOver));
         }
 
@@ -231,6 +253,8 @@ impl<'a, 'b> EventHandler for Game<'a, 'b> {
         let phase = (*self.world.read_resource::<Phase>()).clone();
         if phase == Phase::Menu && keycode == KeyCode::Space {
             self.switch_phase(Phase::Initialize);
+        } else if phase == Phase::Setup && keycode == KeyCode::Space {
+            self.switch_phase(Phase::Play);
         }
 
         // Pass the input to the resource

@@ -4,6 +4,7 @@ pub enum Phase {
     Initialize,
     Setup,
     Play,
+    WaitingForLastEnemy,
     GameOver,
     SwitchTo(Box<Phase>),
 }

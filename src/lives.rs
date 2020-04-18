@@ -45,7 +45,9 @@ impl Lives {
     }
 
     pub fn reduce(&mut self) {
-        self.amount -= 1;
+        if self.amount > 0 {
+            self.amount -= 1;
+        }
     }
 
     pub fn is_dead(&self) -> bool {

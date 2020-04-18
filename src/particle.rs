@@ -48,6 +48,12 @@ impl ParticleEmitter {
 
         self
     }
+
+    pub fn with_dispersion(mut self, dispersion: f64) -> Self {
+        self.dispersion = dispersion;
+
+        self
+    }
 }
 
 /// System that will spawn particles.

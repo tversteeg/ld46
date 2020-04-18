@@ -1,4 +1,4 @@
-use crate::physics::*;
+use crate::{physics::*, random};
 use specs_blit::specs::*;
 
 #[derive(Component, Debug)]
@@ -11,7 +11,7 @@ pub struct Zigzag {
 impl Zigzag {
     pub fn new(amount: f64, time_div: f64) -> Self {
         Self {
-            time: 0.0,
+            time: random::range(0.0, 100.0),
             amount,
             time_div,
         }
