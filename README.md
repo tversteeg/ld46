@@ -1,5 +1,5 @@
 <h1 align="center">
-	<a href="https://tversteeg.nl/ld46/">ld46</a><br/>
+	<a href="https://tversteeg.nl/ld46/">Fermi Paradox</a><br/>
 	<a href="https://github.com/tversteeg/ld46/releases">
 		<img src="https://cdn.rawgit.com/simple-icons/simple-icons/develop/icons/linux.svg" width="18" height="18" />
 		<img src="https://cdn.rawgit.com/simple-icons/simple-icons/develop/icons/apple.svg" width="18" height="18" />

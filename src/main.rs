@@ -273,7 +273,7 @@ fn main() {
 
     miniquad::start(
         Conf {
-            window_title: concat!("ld46 - ", env!("CARGO_PKG_VERSION")).to_string(),
+            window_title: concat!("Fermi Paradox - ", env!("CARGO_PKG_VERSION")).to_string(),
             window_width: WIDTH as i32 * 2,
             window_height: HEIGHT as i32 * 2,
             loading: Loading::Embedded,
