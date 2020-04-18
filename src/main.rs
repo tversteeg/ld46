@@ -1,16 +1,19 @@
 mod color;
 mod effect;
+mod enemy;
 mod entity;
 mod gui;
 mod input;
+mod lives;
 mod particle;
 mod phase;
 mod physics;
 mod player;
 mod render;
+mod ship;
 mod sprite;
 
-use crate::{gui::Gui, input::Input, phase::Phase, render::Render};
+use crate::{gui::Gui, input::Input, lives::Lives, phase::Phase, render::Render};
 use anyhow::Result;
 use miniquad::{
     conf::{Conf, Loading},
@@ -18,8 +21,8 @@ use miniquad::{
 };
 use specs_blit::{specs::prelude::*, PixelBuffer};
 
-const WIDTH: usize = 400;
-const HEIGHT: usize = 300;
+pub const WIDTH: usize = 400;
+pub const HEIGHT: usize = 300;
 
 /// Our game state.
 struct Game<'a, 'b> {
@@ -46,6 +49,8 @@ impl<'a, 'b> Game<'a, 'b> {
         world.register::<physics::Drag>();
 
         world.register::<player::Player>();
+
+        world.register::<enemy::Enemy>();
 
         world.register::<particle::Particle>();
         world.register::<particle::ParticleEmitter>();
@@ -86,14 +91,16 @@ impl<'a, 'b> Game<'a, 'b> {
             world,
             dispatcher,
             render,
-            phase: Phase::Setup,
+            phase: Phase::Menu,
         };
-        game.switch_phase(Phase::Play);
+        game.switch_phase(Phase::Initialize);
 
         Ok(game)
     }
 
     pub fn switch_phase(&mut self, phase: Phase) {
+        self.phase = phase;
+
         match phase {
             Phase::Menu => {
                 // Flash the screen for a bit
@@ -103,26 +110,39 @@ impl<'a, 'b> Game<'a, 'b> {
                     .with(entity::Lifetime::new(5.0))
                     .build();
             }
+            Phase::Initialize => {
+                // Generate the ships
+                self.world.insert(ship::Ships::generate());
+
+                self.switch_phase(Phase::Play);
+            }
             Phase::Setup => {}
             Phase::Play => {
+                self.world.insert(Lives::new(3));
+
                 // Spawn the paddle
                 player::spawn_player(&mut self.world).expect("Couldn't spawn player");
+
+                enemy::spawn_enemy(&mut self.world, enemy::EnemyType::Small);
             }
         }
-
-        self.phase = phase;
     }
 
     pub fn render_phase(&mut self) {
         let phase = self.phase;
 
-        let mut buffer = self.world.write_resource::<PixelBuffer>();
-
         match phase {
             Phase::Menu => {
+                let mut buffer = self.world.write_resource::<PixelBuffer>();
+
                 // Render the GUI
                 let mut gui = self.world.write_resource::<Gui>();
                 gui.draw_label(&mut buffer, "Press SPACE to play!", 20, 20);
+            }
+            Phase::Play => {
+                let mut buffer = self.world.write_resource::<PixelBuffer>();
+                let lives = self.world.read_resource::<Lives>();
+                lives.render(&mut buffer);
             }
             _ => (),
         }

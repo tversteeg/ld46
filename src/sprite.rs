@@ -19,16 +19,10 @@ impl<'a> System<'a> for SpritePositionSystem {
     }
 }
 
-/// Generate a random sprite from a mask and return it as a blit buffer.
-pub fn generate(
-    width: usize,
-    options: Options,
-    mask: &[MaskValue],
-    rotations: u16,
-) -> Result<SpriteRef> {
+pub fn buffer(width: usize, options: Options, mask: &[MaskValue]) -> BlitBuffer {
     let buffer_width = if options.mirror_x { width * 2 } else { width };
 
-    let buf = BlitBuffer::from_buffer(
+    BlitBuffer::from_buffer(
         &sprite_gen::gen_sprite(&mask, width, options)
             .into_iter()
             // Invert the colors
@@ -36,9 +30,17 @@ pub fn generate(
             .collect::<Vec<_>>(),
         buffer_width as i32,
         Color::from_u32(0),
-    );
+    )
+}
 
-    specs_blit::load(buf, rotations)
+/// Generate a random sprite from a mask and return it as a blit buffer.
+pub fn generate(
+    width: usize,
+    options: Options,
+    mask: &[MaskValue],
+    rotations: u16,
+) -> Result<SpriteRef> {
+    specs_blit::load(buffer(width, options, mask), rotations)
 }
 
 /// Generate a single pixel sprite.
