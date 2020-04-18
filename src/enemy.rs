@@ -6,8 +6,8 @@ use crate::{
 use derive_deref::{Deref, DerefMut};
 use specs_blit::{specs::*, Sprite};
 
-const ENEMY_VELOCITY_RESOURCES_MIN_FACTOR_X: f64 = 0.1;
-const ENEMY_VELOCITY_RESOURCES_MAX_FACTOR_X: f64 = 0.9;
+const ENEMY_VELOCITY_RESOURCES_MIN_FACTOR_X: f64 = 0.3;
+const ENEMY_VELOCITY_RESOURCES_MAX_FACTOR_X: f64 = 0.5;
 const ENEMY_VELOCITY_RESOURCES_MIN_FACTOR_Y: f64 = 0.02;
 const ENEMY_VELOCITY_RESOURCES_MAX_FACTOR_Y: f64 = 0.5;
 const ENEMY_VELOCITY_RESOURCES_SPEED_X: f64 = 0.05;
@@ -19,7 +19,7 @@ const ENEMY_ZIGZAG_RESOURCES_SPEED: f64 = 0.1;
 
 const ENEMY_ENGINE_PARTICLE_LIFETIME: f64 = 10.0;
 const ENEMY_DEAD_EMITTER_LIFETIME: f64 = 5.0;
-const ENEMY_DEAD_PARTICLE_LIFETIME: f64 = 50.0;
+const ENEMY_DEAD_PARTICLE_LIFETIME: f64 = 10.0;
 
 const MIN_RESOURCE_USAGE_FACTOR: f64 = 0.01;
 const MAX_RESOURCE_USAGE_FACTOR: f64 = 0.3;
@@ -60,7 +60,9 @@ impl EnemyEmitter {
                 resources * MIN_RESOURCE_USAGE_FACTOR,
                 resources * MAX_RESOURCE_USAGE_FACTOR + (time / 3600.0),
             );
-            cached_resources.push(enemy_resources);
+            if enemy_resources > 10.0 {
+                cached_resources.push(enemy_resources);
+            }
             current_resources += enemy_resources;
         }
 
@@ -94,12 +96,15 @@ impl EnemyEmitter {
         sprites: &Sprites,
         ships: &Ships,
         mut resources: f64,
+        pos: &Option<&Position>,
     ) {
         let enemy = entities.create();
         updater.insert(enemy, Enemy);
 
         let type_ = if resources > 100.0 && random::bool() {
-            resources -= 40.0;
+            resources -= 50.0;
+            updater.insert(enemy, EnemyEmitter::new(resources, 20.0 * 60.0));
+
             EnemyType::Big
         } else if resources > 50.0 && random::bool() {
             resources -= 20.0;
@@ -110,10 +115,13 @@ impl EnemyEmitter {
 
         updater.insert(
             enemy,
-            Position::new(
-                crate::WIDTH as f64 + 10.0,
-                random::range(0.0, crate::HEIGHT as f64),
-            ),
+            match pos {
+                Some(pos) => (*pos).clone(),
+                None => Position::new(
+                    crate::WIDTH as f64 + 10.0,
+                    random::range(0.0, crate::HEIGHT as f64),
+                ),
+            },
         );
 
         let bb = type_.bb();
@@ -253,7 +261,9 @@ impl<'a> System<'a> for EnemyCollisionSystem {
                         ParticleEmitter::new(
                             ENEMY_DEAD_PARTICLE_LIFETIME,
                             sprites.white_particle.clone(),
-                        ),
+                        )
+                        .with_dispersion(3.0)
+                        .with_amount(4),
                     );
                     updater.insert(emitter, Position::from_vec2(enemy_aabr.center()));
                     updater.insert(emitter, Position::from_vec2(enemy_aabr.center()));
@@ -273,33 +283,39 @@ impl<'a> System<'a> for EnemyEmitterSystem {
         Write<'a, Phase>,
         Write<'a, EnemiesLeft>,
         WriteStorage<'a, EnemyEmitter>,
+        ReadStorage<'a, Position>,
         Read<'a, LazyUpdate>,
     );
 
     fn run(
         &mut self,
-        (entities, sprites, ships, mut phase, mut enemies_left, mut emitter, updater): Self::SystemData,
+        (entities, sprites, ships, mut phase, mut enemies_left, mut emitter, pos, updater): Self::SystemData,
     ) {
         if let Some(ships) = ships {
-            for (entity, emitter) in (&*entities, &mut emitter).join() {
-                enemies_left.0 = emitter.enemies_left();
+            enemies_left.0 = 0;
+
+            for (entity, emitter, pos) in (&*entities, &mut emitter, (&pos).maybe()).join() {
+                enemies_left.0 += emitter.enemies_left();
                 if emitter.current_time >= emitter.total_time {
                     // Time ran out, change to another phase
-                    *phase = Phase::WaitingForLastEnemy;
                     let _ = entities.delete(entity);
-                    break;
+                    continue;
                 }
                 emitter.current_time += 1.0;
 
                 if let Some((time, resources)) = emitter.spawner.first() {
                     if *time < emitter.current_time {
                         EnemyEmitter::spawn_enemy_with_resource_usage(
-                            &entities, &updater, &sprites, &ships, *resources,
+                            &entities, &updater, &sprites, &ships, *resources, &pos,
                         );
 
                         emitter.spawner.remove(0);
                     }
                 }
+            }
+
+            if *phase == Phase::Play && emitter.is_empty() {
+                *phase = Phase::WaitingForLastEnemy;
             }
         }
     }

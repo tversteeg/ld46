@@ -21,7 +21,7 @@ pub struct Particle;
 #[derive(Component, Debug)]
 pub struct ParticleEmitter {
     /// Amount of particles to emit every second.
-    amount: f64,
+    amount: u8,
     /// How long the particle lifes.
     lifetime: f64,
     /// The maximum velocity of the particles.
@@ -35,7 +35,7 @@ pub struct ParticleEmitter {
 impl ParticleEmitter {
     pub fn new(lifetime: f64, sprite: SpriteRef) -> Self {
         Self {
-            amount: 1.0,
+            amount: 1,
             dispersion: 0.5,
             lifetime,
             sprite,
@@ -54,6 +54,12 @@ impl ParticleEmitter {
 
         self
     }
+
+    pub fn with_amount(mut self, amount: u8) -> Self {
+        self.amount = amount;
+
+        self
+    }
 }
 
 /// System that will spawn particles.
@@ -68,17 +74,19 @@ impl<'a> System<'a> for ParticleEmitterSystem {
 
     fn run(&mut self, (entities, emitter, pos, updater): Self::SystemData) {
         for (emitter, pos) in (&emitter, &pos).join() {
-            // Spawn a new particle
-            let particle = entities.create();
-            updater.insert(particle, Particle);
-            // Set the destruction time of the particle
-            updater.insert(particle, Lifetime::new(emitter.lifetime));
-            // Clone the position of the emitter
-            updater.insert(particle, pos.add_offset(emitter.offset));
-            // Add a new random velocity
-            updater.insert(particle, Velocity::from_random_range(emitter.dispersion));
-            // Use the sprite reference of the emitter
-            updater.insert(particle, Sprite::new(emitter.sprite.clone()));
+            for _ in 0..emitter.amount {
+                // Spawn a new particle
+                let particle = entities.create();
+                updater.insert(particle, Particle);
+                // Set the destruction time of the particle
+                updater.insert(particle, Lifetime::new(emitter.lifetime));
+                // Clone the position of the emitter
+                updater.insert(particle, pos.add_offset(emitter.offset));
+                // Add a new random velocity
+                updater.insert(particle, Velocity::from_random_range(emitter.dispersion));
+                // Use the sprite reference of the emitter
+                updater.insert(particle, Sprite::new(emitter.sprite.clone()));
+            }
         }
     }
 }

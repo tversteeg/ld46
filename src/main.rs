@@ -31,7 +31,7 @@ pub const WIDTH: usize = 400;
 pub const HEIGHT: usize = 300;
 
 const LEVEL_TIME_SCALE: f64 = 120.0;
-const LEVEL_RESOURCES_SCALE: f64 = 100.0;
+const LEVEL_RESOURCES_SCALE: f64 = 200.0;
 
 /// Our game state.
 struct Game<'a, 'b> {

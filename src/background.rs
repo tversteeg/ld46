@@ -32,9 +32,9 @@ impl Background {
         let mut buffer = buffer
             .into_iter()
             .map(|rgb| {
-                u32::from(rgb[0].wrapping_mul(3))
-                    | (u32::from(rgb[1].wrapping_mul(3)) << 8)
-                    | (u32::from(rgb[2].wrapping_mul(3)) << 16)
+                u32::from(rgb[0])
+                    | (u32::from(rgb[1]) << 8)
+                    | (u32::from(rgb[2]) << 16)
                     | 0xFF000000
             })
             .collect::<Vec<_>>();
