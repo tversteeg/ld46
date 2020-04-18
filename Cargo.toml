@@ -7,6 +7,10 @@ edition = "2018"
 readme = "README.md"
 repository = "https://github.com/tversteeg/ld46"
 documentation = "https://docs.rs/ld46"
+website = "https://tversteeg.nl/ld46"
+description = "Fermi Paradox - my entry for Ludum Dare 46"
+keywords = ["game", "ludum-dare", "pong"]
+categories = ["games"]
 
 [dependencies]
 anyhow = "1.0.28"
