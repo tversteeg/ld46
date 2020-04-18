@@ -46,13 +46,13 @@ impl Input {
     /// Handle miniquad key events.
     pub fn handle_key(&mut self, code: KeyCode, is_down: bool) {
         match code {
-            KeyCode::W | KeyCode::Comma => {
+            KeyCode::Up | KeyCode::W | KeyCode::Comma => {
                 self.up = is_down;
             }
             KeyCode::A => {
                 self.left = is_down;
             }
-            KeyCode::S | KeyCode::O => {
+            KeyCode::Down | KeyCode::S | KeyCode::O => {
                 self.down = is_down;
             }
             KeyCode::D | KeyCode::E => {

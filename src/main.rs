@@ -35,7 +35,6 @@ struct Game<'a, 'b> {
     /// Our wrapper around the OpenGL calls.
     render: Render,
 
-    phase: Phase,
     level: u8,
 }
 
@@ -79,6 +78,9 @@ impl<'a, 'b> Game<'a, 'b> {
         // Add the gui system
         world.insert(Gui::new(WIDTH, HEIGHT));
 
+        // The current phase
+        world.insert(Phase::default());
+
         // Setup the dispatcher with the blit system
         let dispatcher = DispatcherBuilder::new()
             .with(particle::ParticleEmitterSystem, "particle_emitter", &[])
@@ -106,7 +108,6 @@ impl<'a, 'b> Game<'a, 'b> {
             world,
             dispatcher,
             render,
-            phase: Phase::Menu,
             level: 1,
         };
         game.switch_phase(Phase::Menu);
@@ -115,7 +116,10 @@ impl<'a, 'b> Game<'a, 'b> {
     }
 
     pub fn switch_phase(&mut self, phase: Phase) {
-        self.phase = phase;
+        {
+            let mut old_phase = self.world.write_resource::<Phase>();
+            *old_phase = phase.clone();
+        }
 
         // Clear all entities
         self.world.delete_all();
@@ -152,9 +156,9 @@ impl<'a, 'b> Game<'a, 'b> {
     }
 
     pub fn render_phase(&mut self) {
-        let phase = self.phase;
+        let phase = self.world.read_resource::<Phase>();
 
-        match phase {
+        match *phase {
             Phase::Menu => {
                 let mut buffer = self.world.write_resource::<PixelBuffer>();
 
@@ -188,8 +192,13 @@ impl<'a, 'b> EventHandler for Game<'a, 'b> {
         // Add/remove entities added in dispatch through `LazyUpdate`
         self.world.maintain();
 
-        if self.phase == Phase::Play && self.world.read_resource::<Lives>().is_dead() {
-            self.switch_phase(Phase::GameOver);
+        let mut phase = (*self.world.read_resource::<Phase>()).clone();
+        if phase == Phase::Play && self.world.read_resource::<Lives>().is_dead() {
+            phase = Phase::SwitchTo(Box::new(Phase::GameOver));
+        }
+
+        if let Phase::SwitchTo(new_phase) = phase {
+            self.switch_phase(*new_phase);
         }
     }
 
@@ -219,7 +228,8 @@ impl<'a, 'b> EventHandler for Game<'a, 'b> {
         _repeat: bool,
     ) {
         // Start the game when space is pressed
-        if self.phase == Phase::Menu && keycode == KeyCode::Space {
+        let phase = (*self.world.read_resource::<Phase>()).clone();
+        if phase == Phase::Menu && keycode == KeyCode::Space {
             self.switch_phase(Phase::Initialize);
         }
 

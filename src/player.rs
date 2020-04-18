@@ -9,7 +9,7 @@ use specs_blit::{
 };
 use sprite_gen::{MaskValue::*, Options};
 
-const PLAYER_SPEED: f64 = 1.0;
+const PLAYER_SPEED: f64 = 0.5;
 const PLAYER_DRAG: f64 = 0.85;
 
 /// Component to set something as controllable.

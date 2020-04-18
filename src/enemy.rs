@@ -1,6 +1,7 @@
 use crate::{
     color, effect::ScreenFlash, entity::Lifetime, lives::Lives, movement::*,
-    particle::ParticleEmitter, physics::*, player::Player, random, ship::Ships, sprite::Sprites,
+    particle::ParticleEmitter, phase::Phase, physics::*, player::Player, random, ship::Ships,
+    sprite::Sprites,
 };
 use specs_blit::{specs::*, Sprite, SpriteRef};
 
@@ -263,28 +264,31 @@ impl<'a> System<'a> for EnemyEmitterSystem {
         Entities<'a>,
         ReadExpect<'a, Sprites>,
         Option<Read<'a, Ships>>,
+        Write<'a, Phase>,
         WriteStorage<'a, EnemyEmitter>,
         Read<'a, LazyUpdate>,
     );
 
-    fn run(&mut self, (entities, sprites, ships, mut emitter, updater): Self::SystemData) {
+    fn run(
+        &mut self,
+        (entities, sprites, ships, mut phase, mut emitter, updater): Self::SystemData,
+    ) {
         if let Some(ships) = ships {
-            for (entity, emitter) in (&*entities, &mut emitter).join() {
-                let last_time = emitter.current_time;
-                if last_time >= emitter.total_time {
-                    // Time ran out, delete the emitter
-                    let _ = entities.delete(entity);
+            for emitter in (&mut emitter).join() {
+                if emitter.current_time >= emitter.total_time {
+                    // Time ran out, change to another phase
+                    *phase = Phase::SwitchTo(Box::new(Phase::Setup));
                     break;
                 }
                 emitter.current_time += 1.0;
 
-                if let Some((time, resources)) =
-                    emitter.spawner.iter().find(|(time, _)| *time > last_time)
-                {
-                    if *time <= emitter.current_time {
+                if let Some((time, resources)) = emitter.spawner.first() {
+                    if *time < emitter.current_time {
                         EnemyEmitter::spawn_enemy_with_resource_usage(
                             &entities, &updater, &sprites, &ships, *resources,
                         );
+
+                        emitter.spawner.remove(0);
                     }
                 }
             }
