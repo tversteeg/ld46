@@ -1,9 +1,4 @@
-use crate::{
-    input::Input,
-    particle::ParticleEmitter,
-    physics::{Drag, Position, Speed, Velocity},
-    sprite,
-};
+use crate::{input::Input, particle::ParticleEmitter, physics::*, sprite};
 use anyhow::Result;
 use specs_blit::{
     blit::Color,
@@ -47,7 +42,7 @@ impl<'a> System<'a> for PlayerSystem {
 
 /// Spawn a new player.
 pub fn spawn_player(world: &mut World) -> Result<()> {
-    let (width, _height, options) = (
+    let (width, height, options) = (
         11,
         22,
         Options {
@@ -84,9 +79,6 @@ pub fn spawn_player(world: &mut World) -> Result<()> {
     ];
     let sprite = sprite::generate(width, options, &data, 1)?;
 
-    // TODO don't generate this every time
-    let particle_sprite = sprite::single_pixel(Color::from_u32(0xFF))?;
-
     world
         .create_entity()
         .with(Sprite::new(sprite))
@@ -95,7 +87,7 @@ pub fn spawn_player(world: &mut World) -> Result<()> {
         .with(Velocity::new(0.0, 0.0))
         .with(Drag(PLAYER_DRAG))
         .with(Speed(PLAYER_SPEED))
-        .with(ParticleEmitter::new(10.0, particle_sprite))
+        .with(BoundingBox::new(width as f64, height as f64 * 2.0))
         .build();
 
     Ok(())

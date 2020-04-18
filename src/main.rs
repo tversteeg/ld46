@@ -48,6 +48,7 @@ impl<'a, 'b> Game<'a, 'b> {
         world.register::<physics::Velocity>();
         world.register::<physics::Speed>();
         world.register::<physics::Drag>();
+        world.register::<physics::BoundingBox>();
 
         world.register::<player::Player>();
 
@@ -84,6 +85,8 @@ impl<'a, 'b> Game<'a, 'b> {
             .with(movement::MovementSystem, "movement", &[])
             .with(physics::VelocitySystem, "velocity", &["player", "movement"])
             .with(physics::DragSystem, "drag", &["velocity"])
+            .with(physics::BoundingBoxSystem, "bb", &["velocity"])
+            .with(enemy::EnemyCollisionSystem, "enemy_collision", &["bb"])
             .with(sprite::SpritePositionSystem, "sprite_pos", &["velocity"])
             .with_thread_local(specs_blit::RenderSystem)
             .with_thread_local(effect::ScreenFlashSystem)
@@ -91,6 +94,9 @@ impl<'a, 'b> Game<'a, 'b> {
 
         // Setup the OpenGL render part
         let render = Render::new(ctx, WIDTH, HEIGHT);
+
+        // Load some sprites
+        world.insert(sprite::Sprites::generate().expect("Could not generate sprites"));
 
         let mut game = Self {
             world,

@@ -1,4 +1,4 @@
-use crate::physics::Position;
+use crate::{color, physics::Position};
 use anyhow::Result;
 use specs_blit::{
     blit::{BlitBuffer, Color},
@@ -48,4 +48,21 @@ pub fn single_pixel(color: Color) -> Result<SpriteRef> {
     let buf = BlitBuffer::from_buffer(&[color.u32()], 1, Color::from_u32(0));
 
     specs_blit::load(buf, 1)
+}
+
+pub struct Sprites {
+    pub red_particle: SpriteRef,
+    pub white_particle: SpriteRef,
+}
+
+impl Sprites {
+    pub fn generate() -> Result<Self> {
+        let white_particle = single_pixel(Color::from_u32(color::FOREGROUND))?;
+        let red_particle = single_pixel(Color::from_u32(color::RED))?;
+
+        Ok(Self {
+            red_particle,
+            white_particle,
+        })
+    }
 }
