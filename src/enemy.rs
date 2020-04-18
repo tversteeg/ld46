@@ -1,12 +1,5 @@
-use crate::{physics::*, ship::Ships};
-use specs_blit::{
-    blit::Color,
-    specs::{
-        Builder, Component, Join, NullStorage, Read, ReadStorage, System, World, WorldExt,
-        WriteStorage,
-    },
-    Sprite, SpriteRef,
-};
+use crate::{lives::Lives, physics::*, ship::Ships};
+use specs_blit::{specs::*, Sprite, SpriteRef};
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum EnemyType {
@@ -39,6 +32,28 @@ pub fn spawn_enemy(world: &mut World, type_: EnemyType) {
         .with(Sprite::new(sprite))
         .with(Enemy)
         .with(Position::new(crate::WIDTH as f64 - 10.0, 200.0))
-        .with(Velocity::new(0.0, 0.0))
+        .with(Velocity::new(-2.0, 0.0))
         .build();
+}
+
+pub struct EnemySystem;
+impl<'a> System<'a> for EnemySystem {
+    type SystemData = (
+        Entities<'a>,
+        Option<Write<'a, Lives>>,
+        ReadStorage<'a, Enemy>,
+        ReadStorage<'a, Position>,
+    );
+
+    fn run(&mut self, (entities, mut lives, enemy, pos): Self::SystemData) {
+        if let Some(mut lives) = lives {
+            for (entity, pos, _) in (&*entities, &pos, &enemy).join() {
+                if pos.0.x <= 0.0 {
+                    lives.reduce();
+
+                    let _ = entities.delete(entity);
+                }
+            }
+        }
+    }
 }

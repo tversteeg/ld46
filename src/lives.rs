@@ -43,4 +43,12 @@ impl Lives {
                 .blit(buffer.pixels_mut(), width, (5 + i as i32 * 12, 5));
         }
     }
+
+    pub fn reduce(&mut self) {
+        self.amount -= 1;
+    }
+
+    pub fn is_dead(&self) -> bool {
+        self.amount == 0
+    }
 }

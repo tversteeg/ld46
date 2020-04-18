@@ -4,4 +4,5 @@ pub enum Phase {
     Initialize,
     Setup,
     Play,
+    GameOver,
 }

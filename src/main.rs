@@ -77,6 +77,7 @@ impl<'a, 'b> Game<'a, 'b> {
             .with(particle::ParticleEmitterSystem, "particle_emitter", &[])
             .with(entity::LifetimeSystem, "lifetime", &[])
             .with(player::PlayerSystem, "player", &[])
+            .with(enemy::EnemySystem, "enemy", &[])
             .with(physics::VelocitySystem, "velocity", &["player"])
             .with(physics::DragSystem, "drag", &["velocity"])
             .with(sprite::SpritePositionSystem, "sprite_pos", &["velocity"])
@@ -93,13 +94,16 @@ impl<'a, 'b> Game<'a, 'b> {
             render,
             phase: Phase::Menu,
         };
-        game.switch_phase(Phase::Initialize);
+        game.switch_phase(Phase::Menu);
 
         Ok(game)
     }
 
     pub fn switch_phase(&mut self, phase: Phase) {
         self.phase = phase;
+
+        // Clear all entities
+        self.world.delete_all();
 
         match phase {
             Phase::Menu => {
@@ -125,6 +129,7 @@ impl<'a, 'b> Game<'a, 'b> {
 
                 enemy::spawn_enemy(&mut self.world, enemy::EnemyType::Small);
             }
+            _ => (),
         }
     }
 
@@ -144,6 +149,11 @@ impl<'a, 'b> Game<'a, 'b> {
                 let lives = self.world.read_resource::<Lives>();
                 lives.render(&mut buffer);
             }
+            Phase::GameOver => {
+                let mut buffer = self.world.write_resource::<PixelBuffer>();
+                let mut gui = self.world.write_resource::<Gui>();
+                gui.draw_label(&mut buffer, "GAME OVER!", 20, 20);
+            }
             _ => (),
         }
     }
@@ -156,6 +166,10 @@ impl<'a, 'b> EventHandler for Game<'a, 'b> {
 
         // Add/remove entities added in dispatch through `LazyUpdate`
         self.world.maintain();
+
+        if self.phase == Phase::Play && self.world.read_resource::<Lives>().is_dead() {
+            self.switch_phase(Phase::GameOver);
+        }
     }
 
     fn draw(&mut self, ctx: &mut Context) {
@@ -185,7 +199,7 @@ impl<'a, 'b> EventHandler for Game<'a, 'b> {
     ) {
         // Start the game when space is pressed
         if self.phase == Phase::Menu && keycode == KeyCode::Space {
-            self.switch_phase(Phase::Setup);
+            self.switch_phase(Phase::Initialize);
         }
 
         // Pass the input to the resource
