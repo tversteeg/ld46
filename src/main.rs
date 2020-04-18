@@ -5,6 +5,7 @@ mod entity;
 mod gui;
 mod input;
 mod lives;
+mod movement;
 mod particle;
 mod phase;
 mod physics;
@@ -52,6 +53,8 @@ impl<'a, 'b> Game<'a, 'b> {
 
         world.register::<enemy::Enemy>();
 
+        world.register::<movement::Zigzag>();
+
         world.register::<particle::Particle>();
         world.register::<particle::ParticleEmitter>();
 
@@ -78,7 +81,8 @@ impl<'a, 'b> Game<'a, 'b> {
             .with(entity::LifetimeSystem, "lifetime", &[])
             .with(player::PlayerSystem, "player", &[])
             .with(enemy::EnemySystem, "enemy", &[])
-            .with(physics::VelocitySystem, "velocity", &["player"])
+            .with(movement::MovementSystem, "movement", &[])
+            .with(physics::VelocitySystem, "velocity", &["player", "movement"])
             .with(physics::DragSystem, "drag", &["velocity"])
             .with(sprite::SpritePositionSystem, "sprite_pos", &["velocity"])
             .with_thread_local(specs_blit::RenderSystem)

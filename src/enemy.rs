@@ -1,4 +1,4 @@
-use crate::{lives::Lives, physics::*, ship::Ships};
+use crate::{lives::Lives, movement::*, physics::*, ship::Ships};
 use specs_blit::{specs::*, Sprite, SpriteRef};
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
@@ -32,7 +32,8 @@ pub fn spawn_enemy(world: &mut World, type_: EnemyType) {
         .with(Sprite::new(sprite))
         .with(Enemy)
         .with(Position::new(crate::WIDTH as f64 - 10.0, 200.0))
-        .with(Velocity::new(-2.0, 0.0))
+        .with(Velocity::new(-0.5, 0.0))
+        .with(Zigzag::new(1.0, 0.01))
         .build();
 }
 
