@@ -32,6 +32,10 @@ impl Velocity {
         Self(Vec2::new(x, y))
     }
 
+    pub fn from_vec2(v: Vec2) -> Self {
+        Self(v)
+    }
+
     /// Construct a new velocity where the X and Y velocity are randomly placed inside the supplied
     /// range.
     pub fn from_random_range(range: f64) -> Self {
@@ -46,11 +50,11 @@ impl Velocity {
 #[storage(VecStorage)]
 pub struct Drag(pub f64);
 
-#[derive(Component, Debug, Default, Deref, DerefMut)]
+#[derive(Component, Debug, Default, Deref, DerefMut, Clone)]
 #[storage(VecStorage)]
 pub struct Speed(pub f64);
 
-#[derive(Component, Debug, Default, Deref, DerefMut)]
+#[derive(Component, Debug, Default, Deref, DerefMut, Clone)]
 #[storage(VecStorage)]
 pub struct BoundingBox(pub Vec2);
 
@@ -64,6 +68,14 @@ impl BoundingBox {
             min: pos.0,
             max: pos.0 + self.0,
         }
+    }
+
+    pub fn center(&self, pos: &Position) -> Vec2 {
+        self.to_aabr(pos).center()
+    }
+
+    pub fn center_offset(&self) -> Vec2 {
+        self.to_aabr(&Position::new(0.0, 0.0)).center()
     }
 }
 

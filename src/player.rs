@@ -23,18 +23,14 @@ impl<'a> System<'a> for PlayerSystem {
     type SystemData = (
         Read<'a, Input>,
         ReadStorage<'a, Player>,
-        ReadStorage<'a, Speed>,
-        WriteStorage<'a, Velocity>,
+        WriteStorage<'a, Position>,
+        ReadStorage<'a, BoundingBox>,
     );
 
-    fn run(&mut self, (input, player, speed, mut vel): Self::SystemData) {
-        for (vel, speed, _) in (&mut vel, &speed, &player).join() {
-            if input.up_pressed() {
-                vel.0.y -= speed.0;
-            }
-            if input.down_pressed() {
-                vel.0.y += speed.0;
-            }
+    fn run(&mut self, (input, player, mut pos, bb): Self::SystemData) {
+        for (pos, bb, _) in (&mut pos, &bb, &player).join() {
+            let offset = bb.center_offset();
+            pos.y = input.mouse_y() as f64 - offset.y;
         }
     }
 }

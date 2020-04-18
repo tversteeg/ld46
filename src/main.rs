@@ -6,19 +6,21 @@ mod entity;
 mod gui;
 mod input;
 mod lives;
+mod money;
 mod movement;
 mod particle;
 mod phase;
 mod physics;
 mod player;
+mod projectile;
 mod random;
 mod render;
 mod ship;
 mod sprite;
 
 use crate::{
-    background::Background, enemy::EnemiesLeft, gui::Gui, input::Input, lives::Lives, phase::Phase,
-    render::Render,
+    background::Background, enemy::EnemiesLeft, gui::Gui, input::Input, lives::Lives,
+    money::Wallet, phase::Phase, render::Render,
 };
 use anyhow::Result;
 use miniquad::{
@@ -30,8 +32,10 @@ use specs_blit::{specs::prelude::*, PixelBuffer};
 pub const WIDTH: usize = 400;
 pub const HEIGHT: usize = 300;
 
-const LEVEL_TIME_SCALE: f64 = 120.0;
-const LEVEL_RESOURCES_SCALE: f64 = 200.0;
+const LEVEL_TIME_MINIMUM: f64 = 30.0;
+const LEVEL_TIME_SCALE: f64 = 5.0;
+const LEVEL_RESOURCES_MINIMUM: f64 = 50.0;
+const LEVEL_RESOURCES_SCALE: f64 = 20.0;
 
 /// Our game state.
 struct Game<'a, 'b> {
@@ -64,10 +68,15 @@ impl<'a, 'b> Game<'a, 'b> {
         world.register::<enemy::Enemy>();
         world.register::<enemy::EnemyEmitter>();
 
+        world.register::<money::Money>();
+
         world.register::<movement::Zigzag>();
 
         world.register::<particle::Particle>();
         world.register::<particle::ParticleEmitter>();
+
+        world.register::<projectile::Projectile>();
+        world.register::<projectile::ProjectileEmitter>();
 
         world.register::<entity::Lifetime>();
 
@@ -92,8 +101,17 @@ impl<'a, 'b> Game<'a, 'b> {
         // Enemies left
         world.insert(EnemiesLeft::default());
 
+        // Money
+        world.insert(Wallet::default());
+
         // Setup the dispatcher with the blit system
         let dispatcher = DispatcherBuilder::new()
+            .with(
+                projectile::ProjectileEmitterSystem,
+                "projectile_emitter",
+                &[],
+            )
+            .with(projectile::ProjectileSystem, "projectile", &[])
             .with(particle::ParticleEmitterSystem, "particle_emitter", &[])
             .with(entity::LifetimeSystem, "lifetime", &[])
             .with(player::PlayerSystem, "player", &[])
@@ -159,8 +177,8 @@ impl<'a, 'b> Game<'a, 'b> {
                 self.world
                     .create_entity()
                     .with(enemy::EnemyEmitter::new(
-                        200.0 + self.level * LEVEL_RESOURCES_SCALE,
-                        20.0 * 60.0 + self.level * LEVEL_TIME_SCALE,
+                        LEVEL_RESOURCES_MINIMUM + self.level * LEVEL_RESOURCES_SCALE,
+                        LEVEL_TIME_MINIMUM * 60.0 + self.level * LEVEL_TIME_SCALE * 60.0,
                     ))
                     .build();
 
@@ -182,26 +200,40 @@ impl<'a, 'b> Game<'a, 'b> {
                 gui.draw_label(&mut buffer, "Press SPACE to play!", 110, 200);
             }
             Phase::Setup => {
-                gui.draw_label(&mut buffer, format!("Level: {}", self.level), 160, 20);
+                gui.draw_label(&mut buffer, format!("Level {}", self.level), 160, 20);
                 gui.draw_label(&mut buffer, "Press SPACE to start!", 105, 200);
+
+                gui.draw_label(
+                    &mut buffer,
+                    format!("Scrap {}", self.world.read_resource::<Wallet>().money()),
+                    160,
+                    40,
+                );
             }
             Phase::Play | Phase::WaitingForLastEnemy => {
                 let lives = self.world.read_resource::<Lives>();
                 lives.render(&mut buffer, 100, 5);
 
-                gui.draw_label(&mut buffer, format!("Level: {}", self.level), 20, 5);
+                gui.draw_label(
+                    &mut buffer,
+                    format!("Scrap {}", self.world.read_resource::<Wallet>().money()),
+                    300,
+                    5,
+                );
+
+                gui.draw_label(&mut buffer, format!("Level {}", self.level), 20, 5);
 
                 if *phase == Phase::Play {
                     gui.draw_label(
                         &mut buffer,
-                        format!("Enemies: {}", self.world.read_resource::<EnemiesLeft>().0),
+                        format!("Enemies {}", self.world.read_resource::<EnemiesLeft>().0),
                         200,
                         5,
                     );
                 }
             }
             Phase::GameOver => {
-                gui.draw_label(&mut buffer, "GAME OVER!", 20, 20);
+                gui.draw_label(&mut buffer, "GAME OVER!", 160, 130);
             }
             _ => (),
         }

@@ -1,6 +1,17 @@
 use crate::{
-    color, effect::ScreenFlash, entity::Lifetime, lives::Lives, movement::*,
-    particle::ParticleEmitter, phase::Phase, physics::*, player::Player, random, ship::Ships,
+    color,
+    effect::ScreenFlash,
+    entity::Lifetime,
+    lives::Lives,
+    money::{Money, Wallet},
+    movement::*,
+    particle::ParticleEmitter,
+    phase::Phase,
+    physics::*,
+    player::Player,
+    projectile::{Projectile, ProjectileEmitter},
+    random,
+    ship::Ships,
     sprite::Sprites,
 };
 use derive_deref::{Deref, DerefMut};
@@ -10,11 +21,11 @@ const ENEMY_VELOCITY_RESOURCES_MIN_FACTOR_X: f64 = 0.3;
 const ENEMY_VELOCITY_RESOURCES_MAX_FACTOR_X: f64 = 0.5;
 const ENEMY_VELOCITY_RESOURCES_MIN_FACTOR_Y: f64 = 0.02;
 const ENEMY_VELOCITY_RESOURCES_MAX_FACTOR_Y: f64 = 0.5;
-const ENEMY_VELOCITY_RESOURCES_SPEED_X: f64 = 0.05;
-const ENEMY_VELOCITY_RESOURCES_SPEED_Y: f64 = 0.05;
-const ENEMY_VELOCITY_MIN_SPEED: f64 = 2.0;
-const ENEMY_ZIGZAG_RESOURCES_MIN_FACTOR: f64 = 0.1;
-const ENEMY_ZIGZAG_RESOURCES_MAX_FACTOR: f64 = 0.9;
+const ENEMY_VELOCITY_RESOURCES_SPEED_X: f64 = 0.02;
+const ENEMY_VELOCITY_RESOURCES_SPEED_Y: f64 = 0.03;
+const ENEMY_VELOCITY_MIN_SPEED: f64 = 0.1;
+const ENEMY_ZIGZAG_RESOURCES_MIN_FACTOR: f64 = 0.3;
+const ENEMY_ZIGZAG_RESOURCES_MAX_FACTOR: f64 = 0.5;
 const ENEMY_ZIGZAG_RESOURCES_SPEED: f64 = 0.1;
 
 const ENEMY_ENGINE_PARTICLE_LIFETIME: f64 = 10.0;
@@ -23,7 +34,7 @@ const ENEMY_DEAD_PARTICLE_LIFETIME: f64 = 10.0;
 
 const MIN_RESOURCE_USAGE_FACTOR: f64 = 0.01;
 const MAX_RESOURCE_USAGE_FACTOR: f64 = 0.3;
-const TIME_RANDOM_FACTOR: f64 = 5.0;
+const TIME_RANDOM_FACTOR: f64 = 10.0;
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum EnemyType {
@@ -58,7 +69,7 @@ impl EnemyEmitter {
         while current_resources < resources {
             let enemy_resources = random::range(
                 resources * MIN_RESOURCE_USAGE_FACTOR,
-                resources * MAX_RESOURCE_USAGE_FACTOR + (time / 3600.0),
+                resources * MAX_RESOURCE_USAGE_FACTOR,
             );
             if enemy_resources > 10.0 {
                 cached_resources.push(enemy_resources);
@@ -81,7 +92,9 @@ impl EnemyEmitter {
             .collect::<Vec<_>>();
 
         // Always spawn the first one immediately
-        spawner[0].0 = 30.0;
+        if let Some(mut first) = spawner.first_mut() {
+            first.0 = 30.0;
+        }
 
         Self {
             spawner,
@@ -101,16 +114,17 @@ impl EnemyEmitter {
         let enemy = entities.create();
         updater.insert(enemy, Enemy);
 
-        let type_ = if resources > 100.0 && random::bool() {
-            resources -= 50.0;
-            updater.insert(enemy, EnemyEmitter::new(resources, 20.0 * 60.0));
+        let (type_, particle_amount, big_projectile) = if resources > 100.0 && random::bool() {
+            updater.insert(enemy, EnemyEmitter::new(resources - 100.0, 10.0 * 60.0));
+            // Always use the same resources for the big one
+            resources = 20.0;
 
-            EnemyType::Big
+            (EnemyType::Big, 4, true)
         } else if resources > 50.0 && random::bool() {
             resources -= 20.0;
-            EnemyType::Medium
+            (EnemyType::Medium, 2, true)
         } else {
-            EnemyType::Small
+            (EnemyType::Small, 1, false)
         };
 
         updater.insert(
@@ -118,7 +132,7 @@ impl EnemyEmitter {
             match pos {
                 Some(pos) => (*pos).clone(),
                 None => Position::new(
-                    crate::WIDTH as f64 + 10.0,
+                    crate::WIDTH as f64 - 10.0,
                     random::range(0.0, crate::HEIGHT as f64),
                 ),
             },
@@ -131,17 +145,19 @@ impl EnemyEmitter {
                 ENEMY_ENGINE_PARTICLE_LIFETIME + resources / 100.0,
                 sprites.white_particle.clone(),
             )
+            .with_amount(particle_amount)
             .with_dispersion(1.0 - resources / 200.0)
-            .with_offset(bb.to_aabr(&Position::new(0.0, 0.0)).center()),
+            .with_offset(bb.center_offset()),
         );
-
-        updater.insert(enemy, bb);
 
         let x_velocity_resources = random::range(
             ENEMY_VELOCITY_RESOURCES_MIN_FACTOR_X,
             ENEMY_VELOCITY_RESOURCES_MAX_FACTOR_X,
         ) * resources;
         resources -= x_velocity_resources;
+
+        let x_velocity =
+            (x_velocity_resources * ENEMY_VELOCITY_RESOURCES_SPEED_X) + ENEMY_VELOCITY_MIN_SPEED;
 
         updater.insert(enemy, Sprite::new(ships.enemy(type_)));
 
@@ -156,21 +172,13 @@ impl EnemyEmitter {
             updater.insert(
                 enemy,
                 Velocity::new(
-                    -x_velocity_resources * ENEMY_VELOCITY_RESOURCES_SPEED_X
-                        - ENEMY_VELOCITY_MIN_SPEED,
+                    -x_velocity,
                     y_velocity_resources * ENEMY_VELOCITY_RESOURCES_SPEED_Y,
                 ),
             );
         } else {
             // Zigzag pattern
-            updater.insert(
-                enemy,
-                Velocity::new(
-                    -x_velocity_resources * ENEMY_VELOCITY_RESOURCES_SPEED_X
-                        - ENEMY_VELOCITY_MIN_SPEED,
-                    0.0,
-                ),
-            );
+            updater.insert(enemy, Velocity::new(-x_velocity, 0.0));
 
             let zigzag_amount_resources = random::range(
                 ENEMY_ZIGZAG_RESOURCES_MIN_FACTOR,
@@ -186,6 +194,25 @@ impl EnemyEmitter {
                 ),
             );
         }
+
+        let (proj_sprite, proj_width, proj_height) = if big_projectile {
+            sprites.big_projectile()
+        } else {
+            sprites.small_projectile()
+        };
+
+        // Shoot bullets
+        updater.insert(
+            enemy,
+            ProjectileEmitter::new(proj_sprite, BoundingBox::new(proj_width, proj_height))
+                .with_speed(x_velocity + 3.0)
+                .with_offset(bb.center_offset()),
+        );
+
+        updater.insert(enemy, bb);
+
+        // The rest of the resources is the leftover money
+        updater.insert(enemy, Money::new(resources as usize));
     }
 
     pub fn enemies_left(&self) -> usize {
@@ -236,24 +263,37 @@ pub struct EnemyCollisionSystem;
 impl<'a> System<'a> for EnemyCollisionSystem {
     type SystemData = (
         Entities<'a>,
+        Write<'a, Wallet>,
         ReadExpect<'a, Sprites>,
         ReadStorage<'a, Enemy>,
         ReadStorage<'a, Player>,
+        ReadStorage<'a, Projectile>,
         ReadStorage<'a, Position>,
+        ReadStorage<'a, Velocity>,
         ReadStorage<'a, BoundingBox>,
+        ReadStorage<'a, Money>,
         Read<'a, LazyUpdate>,
     );
 
-    fn run(&mut self, (entities, sprites, enemy, player, pos, bb, updater): Self::SystemData) {
+    fn run(
+        &mut self,
+        (entities, mut wallet, sprites, enemy, player, projectile, pos, vel, bb, money, updater): Self::SystemData,
+    ) {
         // Check for collision with the player
         for (player_pos, player_bb, _) in (&pos, &bb, &player).join() {
             let player_aabr = player_bb.to_aabr(player_pos);
-            for (entity, enemy_pos, enemy_bb, _) in (&*entities, &pos, &bb, &enemy).join() {
+            for (entity, enemy_pos, enemy_bb, money, _) in
+                (&*entities, &pos, &bb, (&money).maybe(), &enemy).join()
+            {
                 let enemy_aabr = enemy_bb.to_aabr(enemy_pos);
 
                 if enemy_aabr.collides_with_aabr(player_aabr) {
                     // Remove the enemy
                     let _ = entities.delete(entity);
+
+                    if let Some(money) = money {
+                        wallet.add(money);
+                    }
 
                     let emitter = entities.create();
                     updater.insert(
@@ -268,6 +308,42 @@ impl<'a> System<'a> for EnemyCollisionSystem {
                     updater.insert(emitter, Position::from_vec2(enemy_aabr.center()));
                     updater.insert(emitter, Position::from_vec2(enemy_aabr.center()));
                     updater.insert(emitter, Lifetime::new(ENEMY_DEAD_EMITTER_LIFETIME));
+                }
+            }
+        }
+        // Check for collision with the projectile
+        for (projectile_entity, projectile_pos, projectile_bb, projectile_vel, _) in
+            (&*entities, &pos, &bb, &vel, &projectile).join()
+        {
+            if projectile_vel.x > 0.0 {
+                let projectile_aabr = projectile_bb.to_aabr(projectile_pos);
+                for (enemy_entity, enemy_pos, enemy_bb, money, _) in
+                    (&*entities, &pos, &bb, (&money).maybe(), &enemy).join()
+                {
+                    let enemy_aabr = enemy_bb.to_aabr(enemy_pos);
+
+                    if enemy_aabr.collides_with_aabr(projectile_aabr) {
+                        let _ = entities.delete(projectile_entity);
+                        let _ = entities.delete(enemy_entity);
+
+                        if let Some(money) = money {
+                            wallet.add(money);
+                        }
+
+                        let emitter = entities.create();
+                        updater.insert(
+                            emitter,
+                            ParticleEmitter::new(
+                                ENEMY_DEAD_PARTICLE_LIFETIME,
+                                sprites.white_particle.clone(),
+                            )
+                            .with_dispersion(3.0)
+                            .with_amount(4),
+                        );
+                        updater.insert(emitter, Position::from_vec2(enemy_aabr.center()));
+                        updater.insert(emitter, Position::from_vec2(enemy_aabr.center()));
+                        updater.insert(emitter, Lifetime::new(ENEMY_DEAD_EMITTER_LIFETIME));
+                    }
                 }
             }
         }
@@ -298,7 +374,11 @@ impl<'a> System<'a> for EnemyEmitterSystem {
                 enemies_left.0 += emitter.enemies_left();
                 if emitter.current_time >= emitter.total_time {
                     // Time ran out, change to another phase
-                    let _ = entities.delete(entity);
+                    if pos.is_none() {
+                        // Only delete the emitters that are not attached, the other ones will be
+                        // deleted automatically
+                        let _ = entities.delete(entity);
+                    }
                     continue;
                 }
                 emitter.current_time += 1.0;
