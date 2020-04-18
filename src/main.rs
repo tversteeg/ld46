@@ -1,3 +1,4 @@
+mod background;
 mod color;
 mod effect;
 mod enemy;
@@ -16,7 +17,8 @@ mod ship;
 mod sprite;
 
 use crate::{
-    enemy::EnemiesLeft, gui::Gui, input::Input, lives::Lives, phase::Phase, render::Render,
+    background::Background, enemy::EnemiesLeft, gui::Gui, input::Input, lives::Lives, phase::Phase,
+    render::Render,
 };
 use anyhow::Result;
 use miniquad::{
@@ -41,6 +43,7 @@ struct Game<'a, 'b> {
     render: Render,
 
     level: f64,
+    background: Background,
 }
 
 impl<'a, 'b> Game<'a, 'b> {
@@ -117,6 +120,7 @@ impl<'a, 'b> Game<'a, 'b> {
             dispatcher,
             render,
             level: 1.0,
+            background: Background::new(),
         };
         game.switch_phase(Phase::default());
 
@@ -233,8 +237,7 @@ impl<'a, 'b> EventHandler for Game<'a, 'b> {
         // Render the buffer
         self.render.render(ctx, &buffer);
 
-        // Clear the buffer with a black color
-        buffer.clear(color::BACKGROUND);
+        self.background.copy(&mut buffer.pixels_mut());
     }
 
     fn key_up_event(&mut self, _ctx: &mut Context, keycode: KeyCode, _keymods: KeyMods) {
@@ -308,8 +311,8 @@ fn main() {
     miniquad::start(
         Conf {
             window_title: concat!("Fermi Paradox - ", env!("CARGO_PKG_VERSION")).to_string(),
-            window_width: WIDTH as i32 * 2,
-            window_height: HEIGHT as i32 * 2,
+            window_width: WIDTH as i32 * 3,
+            window_height: HEIGHT as i32 * 3,
             loading: Loading::Embedded,
             ..Default::default()
         },

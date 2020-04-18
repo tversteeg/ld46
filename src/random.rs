@@ -4,6 +4,12 @@ pub fn range(min: f64, max: f64) -> f64 {
     r * (max - min) + min
 }
 
+pub fn usize(max: usize) -> usize {
+    let r = unsafe { miniquad::rand() as usize };
+
+    (r / (miniquad::RAND_MAX as usize / max)).min(max - 1)
+}
+
 pub fn bool() -> bool {
     let r = unsafe { miniquad::rand() };
 
@@ -11,7 +17,8 @@ pub fn bool() -> bool {
 }
 
 pub fn index<T>(v: &Vec<T>) -> &T {
-    let r = unsafe { miniquad::rand() } as usize / (miniquad::RAND_MAX as usize / v.len());
+    let len = v.len();
+    let r = unsafe { miniquad::rand() } as usize / (miniquad::RAND_MAX as usize / len);
 
-    &v[r]
+    &v[r.min(len - 1)]
 }
