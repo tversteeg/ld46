@@ -36,11 +36,11 @@ impl Lives {
         Self { amount, sprite }
     }
 
-    pub fn render(&self, buffer: &mut PixelBuffer) {
+    pub fn render(&self, buffer: &mut PixelBuffer, x: i32, y: i32) {
         let width = buffer.width();
         for i in 0..self.amount {
             self.sprite
-                .blit(buffer.pixels_mut(), width, (20 + i as i32 * 12, 5));
+                .blit(buffer.pixels_mut(), width, (x + i as i32 * 12, y));
         }
     }
 

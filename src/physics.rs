@@ -1,3 +1,4 @@
+use crate::random;
 use derive_deref::{Deref, DerefMut};
 use specs_blit::specs::{Component, Join, ReadStorage, System, VecStorage, WriteStorage};
 
@@ -16,6 +17,10 @@ impl Position {
     pub fn from_vec2(v: Vec2) -> Self {
         Self(v)
     }
+
+    pub fn add_offset(&self, offset: Vec2) -> Self {
+        Self(self.0 + offset)
+    }
 }
 
 #[derive(Component, Debug, Default, Deref, DerefMut, Clone)]
@@ -30,10 +35,8 @@ impl Velocity {
     /// Construct a new velocity where the X and Y velocity are randomly placed inside the supplied
     /// range.
     pub fn from_random_range(range: f64) -> Self {
-        let rand_x =
-            unsafe { miniquad::rand() as f64 / miniquad::RAND_MAX as f64 } * 2.0 - 1.0 * range;
-        let rand_y =
-            unsafe { miniquad::rand() as f64 / miniquad::RAND_MAX as f64 } * 2.0 - 1.0 * range;
+        let rand_x = random::range(-range, range);
+        let rand_y = random::range(-range, range);
 
         Self(Vec2::new(rand_x, rand_y))
     }

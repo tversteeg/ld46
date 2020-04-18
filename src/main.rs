@@ -36,6 +36,7 @@ struct Game<'a, 'b> {
     render: Render,
 
     phase: Phase,
+    level: u8,
 }
 
 impl<'a, 'b> Game<'a, 'b> {
@@ -106,6 +107,7 @@ impl<'a, 'b> Game<'a, 'b> {
             dispatcher,
             render,
             phase: Phase::Menu,
+            level: 1,
         };
         game.switch_phase(Phase::Menu);
 
@@ -163,7 +165,10 @@ impl<'a, 'b> Game<'a, 'b> {
             Phase::Play => {
                 let mut buffer = self.world.write_resource::<PixelBuffer>();
                 let lives = self.world.read_resource::<Lives>();
-                lives.render(&mut buffer);
+                lives.render(&mut buffer, 100, 5);
+
+                let mut gui = self.world.write_resource::<Gui>();
+                gui.draw_label(&mut buffer, format!("Level {}", self.level), 20, 5);
             }
             Phase::GameOver => {
                 let mut buffer = self.world.write_resource::<PixelBuffer>();
@@ -258,12 +263,12 @@ extern "C" {
     // Seed random when on Linux
     fn srand(input: u32);
 }
+#[cfg(not(target_os = "linux"))]
+fn srand(_: u32) {}
 
 fn main() {
-    if cfg!(target_os = "linux") {
-        unsafe {
-            srand(miniquad::date::now() as u32);
-        }
+    unsafe {
+        srand(miniquad::date::now() as u32);
     }
 
     miniquad::start(

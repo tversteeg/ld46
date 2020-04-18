@@ -10,6 +10,8 @@ use specs_blit::{
     Sprite, SpriteRef,
 };
 
+type Vec2 = vek::Vec2<f64>;
+
 /// A particle that moves around but doesn't collide.
 #[derive(Component, Debug, Default)]
 #[storage(NullStorage)]
@@ -26,6 +28,8 @@ pub struct ParticleEmitter {
     dispersion: f64,
     /// The sprite to use.
     sprite: SpriteRef,
+    /// Optional offset.
+    offset: Vec2,
 }
 
 impl ParticleEmitter {
@@ -35,7 +39,14 @@ impl ParticleEmitter {
             dispersion: 0.5,
             lifetime,
             sprite,
+            offset: Vec2::new(0.0, 0.0),
         }
+    }
+
+    pub fn with_offset(mut self, offset: Vec2) -> Self {
+        self.offset = offset;
+
+        self
     }
 }
 
@@ -57,7 +68,7 @@ impl<'a> System<'a> for ParticleEmitterSystem {
             // Set the destruction time of the particle
             updater.insert(particle, Lifetime::new(emitter.lifetime));
             // Clone the position of the emitter
-            updater.insert(particle, pos.clone());
+            updater.insert(particle, pos.add_offset(emitter.offset));
             // Add a new random velocity
             updater.insert(particle, Velocity::from_random_range(emitter.dispersion));
             // Use the sprite reference of the emitter

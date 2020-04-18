@@ -15,8 +15,9 @@ const ENEMY_ZIGZAG_RESOURCES_MIN_FACTOR: f64 = 0.1;
 const ENEMY_ZIGZAG_RESOURCES_MAX_FACTOR: f64 = 0.9;
 const ENEMY_ZIGZAG_RESOURCES_SPEED: f64 = 0.01;
 
+const ENEMY_ENGINE_PARTICLE_LIFETIME: f64 = 10.0;
 const ENEMY_DEAD_EMITTER_LIFETIME: f64 = 5.0;
-const ENEMY_DEAD_PARTICLE_LIFETIME: f64 = 20.0;
+const ENEMY_DEAD_PARTICLE_LIFETIME: f64 = 50.0;
 
 const MIN_RESOURCE_USAGE_FACTOR: f64 = 0.01;
 const MAX_RESOURCE_USAGE_FACTOR: f64 = 0.3;
@@ -96,6 +97,7 @@ impl EnemyEmitter {
     pub fn spawn_enemy_with_resource_usage(
         entities: &Entities,
         updater: &LazyUpdate,
+        sprites: &Sprites,
         ships: &Ships,
         mut resources: f64,
     ) {
@@ -113,7 +115,7 @@ impl EnemyEmitter {
         };
 
         updater.insert(enemy, Sprite::new(type_.sprite(ships)));
-        updater.insert(enemy, type_.bb());
+
         updater.insert(
             enemy,
             Position::new(
@@ -121,6 +123,18 @@ impl EnemyEmitter {
                 random::range(0.0, crate::HEIGHT as f64),
             ),
         );
+
+        let bb = type_.bb();
+        updater.insert(
+            enemy,
+            ParticleEmitter::new(
+                ENEMY_ENGINE_PARTICLE_LIFETIME,
+                sprites.white_particle.clone(),
+            )
+            .with_offset(bb.to_aabr(&Position::new(0.0, 0.0)).center()),
+        );
+
+        updater.insert(enemy, bb);
 
         let x_velocity_resources = random::range(
             ENEMY_VELOCITY_RESOURCES_MIN_FACTOR_X,
@@ -247,12 +261,13 @@ pub struct EnemyEmitterSystem;
 impl<'a> System<'a> for EnemyEmitterSystem {
     type SystemData = (
         Entities<'a>,
+        ReadExpect<'a, Sprites>,
         Option<Read<'a, Ships>>,
         WriteStorage<'a, EnemyEmitter>,
         Read<'a, LazyUpdate>,
     );
 
-    fn run(&mut self, (entities, ships, mut emitter, updater): Self::SystemData) {
+    fn run(&mut self, (entities, sprites, ships, mut emitter, updater): Self::SystemData) {
         if let Some(ships) = ships {
             for (entity, emitter) in (&*entities, &mut emitter).join() {
                 let last_time = emitter.current_time;
@@ -268,7 +283,7 @@ impl<'a> System<'a> for EnemyEmitterSystem {
                 {
                     if *time <= emitter.current_time {
                         EnemyEmitter::spawn_enemy_with_resource_usage(
-                            &entities, &updater, &ships, *resources,
+                            &entities, &updater, &sprites, &ships, *resources,
                         );
                     }
                 }
