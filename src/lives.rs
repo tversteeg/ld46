@@ -40,7 +40,7 @@ impl Lives {
         let width = buffer.width();
         for i in 0..self.amount {
             self.sprite
-                .blit(buffer.pixels_mut(), width, (5 + i as i32 * 12, 5));
+                .blit(buffer.pixels_mut(), width, (20 + i as i32 * 12, 5));
         }
     }
 

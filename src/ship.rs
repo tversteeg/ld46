@@ -1,5 +1,5 @@
 use crate::sprite;
-use specs_blit::{blit::Color, Sprite, SpriteRef};
+use specs_blit::SpriteRef;
 use sprite_gen::{MaskValue::*, Options};
 
 pub struct Ships {

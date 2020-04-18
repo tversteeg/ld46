@@ -10,6 +10,7 @@ mod particle;
 mod phase;
 mod physics;
 mod player;
+mod random;
 mod render;
 mod ship;
 mod sprite;
@@ -53,6 +54,7 @@ impl<'a, 'b> Game<'a, 'b> {
         world.register::<player::Player>();
 
         world.register::<enemy::Enemy>();
+        world.register::<enemy::EnemyEmitter>();
 
         world.register::<movement::Zigzag>();
 
@@ -82,6 +84,7 @@ impl<'a, 'b> Game<'a, 'b> {
             .with(entity::LifetimeSystem, "lifetime", &[])
             .with(player::PlayerSystem, "player", &[])
             .with(enemy::EnemySystem, "enemy", &[])
+            .with(enemy::EnemyEmitterSystem, "enemy_emitter", &[])
             .with(movement::MovementSystem, "movement", &[])
             .with(physics::VelocitySystem, "velocity", &["player", "movement"])
             .with(physics::DragSystem, "drag", &["velocity"])
@@ -134,10 +137,13 @@ impl<'a, 'b> Game<'a, 'b> {
             Phase::Play => {
                 self.world.insert(Lives::new(3));
 
+                self.world
+                    .create_entity()
+                    .with(enemy::EnemyEmitter::new(200.0, 30.0 * 60.0))
+                    .build();
+
                 // Spawn the paddle
                 player::spawn_player(&mut self.world).expect("Couldn't spawn player");
-
-                enemy::spawn_enemy(&mut self.world, enemy::EnemyType::Small);
             }
             _ => (),
         }
@@ -247,7 +253,19 @@ impl<'a, 'b> EventHandler for Game<'a, 'b> {
     }
 }
 
+#[cfg(target_os = "linux")]
+extern "C" {
+    // Seed random when on Linux
+    fn srand(input: u32);
+}
+
 fn main() {
+    if cfg!(target_os = "linux") {
+        unsafe {
+            srand(miniquad::date::now() as u32);
+        }
+    }
+
     miniquad::start(
         Conf {
             window_title: concat!("ld46 - ", env!("CARGO_PKG_VERSION")).to_string(),

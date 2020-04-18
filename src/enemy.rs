@@ -1,12 +1,26 @@
 use crate::{
-    entity::Lifetime, lives::Lives, movement::*, particle::ParticleEmitter, physics::*,
-    player::Player, ship::Ships, sprite::Sprites,
+    color, effect::ScreenFlash, entity::Lifetime, lives::Lives, movement::*,
+    particle::ParticleEmitter, physics::*, player::Player, random, ship::Ships, sprite::Sprites,
 };
 use specs_blit::{specs::*, Sprite, SpriteRef};
 
-const ENEMY_VELOCITY: f64 = -0.6;
+const ENEMY_VELOCITY_RESOURCES_MIN_FACTOR_X: f64 = 0.1;
+const ENEMY_VELOCITY_RESOURCES_MAX_FACTOR_X: f64 = 0.9;
+const ENEMY_VELOCITY_RESOURCES_MIN_FACTOR_Y: f64 = 0.02;
+const ENEMY_VELOCITY_RESOURCES_MAX_FACTOR_Y: f64 = 0.5;
+const ENEMY_VELOCITY_RESOURCES_SPEED_X: f64 = 0.1;
+const ENEMY_VELOCITY_RESOURCES_SPEED_Y: f64 = 0.05;
+const ENEMY_VELOCITY_MIN_SPEED: f64 = 1.0;
+const ENEMY_ZIGZAG_RESOURCES_MIN_FACTOR: f64 = 0.1;
+const ENEMY_ZIGZAG_RESOURCES_MAX_FACTOR: f64 = 0.9;
+const ENEMY_ZIGZAG_RESOURCES_SPEED: f64 = 0.01;
+
 const ENEMY_DEAD_EMITTER_LIFETIME: f64 = 5.0;
 const ENEMY_DEAD_PARTICLE_LIFETIME: f64 = 20.0;
+
+const MIN_RESOURCE_USAGE_FACTOR: f64 = 0.01;
+const MAX_RESOURCE_USAGE_FACTOR: f64 = 0.3;
+const TIME_RANDOM_FACTOR: f64 = 5.0;
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum EnemyType {
@@ -16,9 +30,7 @@ pub enum EnemyType {
 }
 
 impl EnemyType {
-    pub fn sprite(self, world: &mut World) -> SpriteRef {
-        let ships = world.read_resource::<Ships>();
-
+    pub fn sprite(self, ships: &Ships) -> SpriteRef {
         match self {
             EnemyType::Small => ships.enemy_small.clone(),
             EnemyType::Medium => ships.enemy_medium.clone(),
@@ -36,22 +48,133 @@ impl EnemyType {
 }
 
 #[derive(Component, Debug, Default)]
+pub struct EnemyEmitter {
+    /// Time, resources for enemy.
+    spawner: Vec<(f64, f64)>,
+    current_time: f64,
+    total_time: f64,
+}
+
+impl EnemyEmitter {
+    pub fn new(resources: f64, time: f64) -> Self {
+        // Fill the resource list with random values until it's full
+        let mut cached_resources = vec![];
+        let mut current_resources = 0.0;
+        while current_resources < resources {
+            let enemy_resources = random::range(
+                resources * MIN_RESOURCE_USAGE_FACTOR,
+                resources * MAX_RESOURCE_USAGE_FACTOR + (time / 3600.0),
+            );
+            cached_resources.push(enemy_resources);
+            current_resources += enemy_resources;
+        }
+
+        // Spread it out over time
+        let time_dist = time / cached_resources.len() as f64;
+        let mut spawner = cached_resources
+            .into_iter()
+            .enumerate()
+            .map(|(index, resources)| {
+                (
+                    index as f64 * time_dist
+                        + random::range(-TIME_RANDOM_FACTOR, TIME_RANDOM_FACTOR),
+                    resources,
+                )
+            })
+            .collect::<Vec<_>>();
+
+        // Always spawn the first one immediately
+        spawner[0].0 = 5.0;
+
+        Self {
+            spawner,
+            current_time: 0.0,
+            total_time: time,
+        }
+    }
+
+    pub fn spawn_enemy_with_resource_usage(
+        entities: &Entities,
+        updater: &LazyUpdate,
+        ships: &Ships,
+        mut resources: f64,
+    ) {
+        let enemy = entities.create();
+        updater.insert(enemy, Enemy);
+
+        let type_ = if resources < 50.0 {
+            EnemyType::Small
+        } else if resources < 100.0 {
+            resources -= 50.0;
+            EnemyType::Medium
+        } else {
+            resources -= 100.0;
+            EnemyType::Big
+        };
+
+        updater.insert(enemy, Sprite::new(type_.sprite(ships)));
+        updater.insert(enemy, type_.bb());
+        updater.insert(
+            enemy,
+            Position::new(
+                crate::WIDTH as f64 + 10.0,
+                random::range(0.0, crate::HEIGHT as f64),
+            ),
+        );
+
+        let x_velocity_resources = random::range(
+            ENEMY_VELOCITY_RESOURCES_MIN_FACTOR_X,
+            ENEMY_VELOCITY_RESOURCES_MAX_FACTOR_X,
+        ) * resources;
+        resources -= x_velocity_resources;
+
+        if random::bool() {
+            // Straight pattern
+            let y_velocity_resources = random::range(
+                ENEMY_VELOCITY_RESOURCES_MIN_FACTOR_Y,
+                ENEMY_VELOCITY_RESOURCES_MAX_FACTOR_Y,
+            ) * resources;
+            resources -= y_velocity_resources;
+
+            updater.insert(
+                enemy,
+                Velocity::new(
+                    -x_velocity_resources * ENEMY_VELOCITY_RESOURCES_SPEED_X
+                        - ENEMY_VELOCITY_MIN_SPEED,
+                    y_velocity_resources * ENEMY_VELOCITY_RESOURCES_SPEED_Y,
+                ),
+            );
+        } else {
+            // Zigzag pattern
+            updater.insert(
+                enemy,
+                Velocity::new(
+                    -x_velocity_resources * ENEMY_VELOCITY_RESOURCES_SPEED_X
+                        - ENEMY_VELOCITY_MIN_SPEED,
+                    0.0,
+                ),
+            );
+
+            let zigzag_amount_resources = random::range(
+                ENEMY_ZIGZAG_RESOURCES_MIN_FACTOR,
+                ENEMY_ZIGZAG_RESOURCES_MAX_FACTOR,
+            ) * resources;
+            resources -= zigzag_amount_resources;
+
+            updater.insert(
+                enemy,
+                Zigzag::new(
+                    zigzag_amount_resources * ENEMY_ZIGZAG_RESOURCES_SPEED,
+                    random::range(0.001, 0.2),
+                ),
+            );
+        }
+    }
+}
+
+#[derive(Component, Debug, Default)]
 #[storage(NullStorage)]
 pub struct Enemy;
-
-pub fn spawn_enemy(world: &mut World, type_: EnemyType) {
-    let sprite = type_.sprite(world);
-
-    world
-        .create_entity()
-        .with(Sprite::new(sprite))
-        .with(Enemy)
-        .with(type_.bb())
-        .with(Position::new(crate::WIDTH as f64 - 10.0, 200.0))
-        .with(Velocity::new(ENEMY_VELOCITY, 0.0))
-        .with(Zigzag::new(1.0, 0.01))
-        .build();
-}
 
 pub struct EnemySystem;
 impl<'a> System<'a> for EnemySystem {
@@ -60,13 +183,18 @@ impl<'a> System<'a> for EnemySystem {
         Option<Write<'a, Lives>>,
         ReadStorage<'a, Enemy>,
         ReadStorage<'a, Position>,
+        Read<'a, LazyUpdate>,
     );
 
-    fn run(&mut self, (entities, mut lives, enemy, pos): Self::SystemData) {
+    fn run(&mut self, (entities, lives, enemy, pos, updater): Self::SystemData) {
         if let Some(mut lives) = lives {
             for (entity, pos, _) in (&*entities, &pos, &enemy).join() {
                 if pos.0.x <= 0.0 {
                     lives.reduce();
+
+                    let flash = entities.create();
+                    updater.insert(flash, ScreenFlash::new(color::RED));
+                    updater.insert(flash, Lifetime::new(5.0));
 
                     let _ = entities.delete(entity);
                 }
@@ -109,6 +237,40 @@ impl<'a> System<'a> for EnemyCollisionSystem {
                     updater.insert(emitter, Position::from_vec2(enemy_aabr.center()));
                     updater.insert(emitter, Position::from_vec2(enemy_aabr.center()));
                     updater.insert(emitter, Lifetime::new(ENEMY_DEAD_EMITTER_LIFETIME));
+                }
+            }
+        }
+    }
+}
+
+pub struct EnemyEmitterSystem;
+impl<'a> System<'a> for EnemyEmitterSystem {
+    type SystemData = (
+        Entities<'a>,
+        Option<Read<'a, Ships>>,
+        WriteStorage<'a, EnemyEmitter>,
+        Read<'a, LazyUpdate>,
+    );
+
+    fn run(&mut self, (entities, ships, mut emitter, updater): Self::SystemData) {
+        if let Some(ships) = ships {
+            for (entity, emitter) in (&*entities, &mut emitter).join() {
+                let last_time = emitter.current_time;
+                if last_time >= emitter.total_time {
+                    // Time ran out, delete the emitter
+                    let _ = entities.delete(entity);
+                    break;
+                }
+                emitter.current_time += 1.0;
+
+                if let Some((time, resources)) =
+                    emitter.spawner.iter().find(|(time, _)| *time > last_time)
+                {
+                    if *time <= emitter.current_time {
+                        EnemyEmitter::spawn_enemy_with_resource_usage(
+                            &entities, &updater, &ships, *resources,
+                        );
+                    }
                 }
             }
         }

@@ -1,7 +1,6 @@
-use crate::{input::Input, particle::ParticleEmitter, physics::*, sprite};
+use crate::{input::Input, physics::*, sprite};
 use anyhow::Result;
 use specs_blit::{
-    blit::Color,
     specs::{
         Builder, Component, Join, NullStorage, Read, ReadStorage, System, World, WorldExt,
         WriteStorage,
