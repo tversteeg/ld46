@@ -152,7 +152,7 @@ impl<'a, 'b> Game<'a, 'b> {
         match phase {
             Phase::Menu => {}
             Phase::Initialize => {
-                self.level = 5;
+                self.level = 1;
 
                 // Generate the ships
                 self.world.insert(ship::Ships::generate());
