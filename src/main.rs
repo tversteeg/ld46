@@ -20,14 +20,14 @@ mod sprite;
 
 use crate::{
     background::Background, enemy::EnemiesLeft, gui::Gui, input::Input, lives::Lives,
-    money::Wallet, phase::Phase, render::Render,
+    money::Wallet, phase::Phase, physics::Position, render::Render, sprite::Sprites,
 };
 use anyhow::Result;
 use miniquad::{
     conf::{Conf, Loading},
     Context, EventHandler, KeyCode, KeyMods, MouseButton, UserData,
 };
-use specs_blit::{specs::prelude::*, PixelBuffer};
+use specs_blit::{specs::prelude::*, PixelBuffer, Sprite};
 
 pub const WIDTH: usize = 400;
 pub const HEIGHT: usize = 300;
@@ -83,7 +83,7 @@ impl<'a, 'b> Game<'a, 'b> {
         world.register::<effect::ScreenFlash>();
 
         // Load the sprite rendering component
-        world.register::<specs_blit::Sprite>();
+        world.register::<Sprite>();
 
         // Add the pixel buffer as a resource so it can be accessed from the RenderSystem later, to be
         // updated every frame
@@ -131,7 +131,7 @@ impl<'a, 'b> Game<'a, 'b> {
         let render = Render::new(ctx, WIDTH, HEIGHT);
 
         // Load some sprites
-        world.insert(sprite::Sprites::generate().expect("Could not generate sprites"));
+        world.insert(Sprites::generate().expect("Could not generate sprites"));
 
         let mut game = Self {
             world,
@@ -172,6 +172,14 @@ impl<'a, 'b> Game<'a, 'b> {
                     .create_entity()
                     .with(effect::ScreenFlash::new(color::FOREGROUND))
                     .with(entity::Lifetime::new(5.0))
+                    .build();
+
+                // Render background planet
+                let sprite = self.world.read_resource::<Sprites>().planet.clone();
+                self.world
+                    .create_entity()
+                    .with(Sprite::new(sprite))
+                    .with(Position::new(0.0, 0.0))
                     .build();
 
                 self.world.insert(Lives::new(3));

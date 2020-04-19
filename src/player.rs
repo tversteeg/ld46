@@ -78,7 +78,7 @@ pub fn spawn_player(world: &mut World) -> Result<()> {
         .create_entity()
         .with(Sprite::new(sprite))
         .with(Player)
-        .with(Position::new(5.0, 200.0))
+        .with(Position::new(10.0, 200.0))
         .with(Velocity::new(0.0, 0.0))
         .with(Drag(PLAYER_DRAG))
         .with(Speed(PLAYER_SPEED))

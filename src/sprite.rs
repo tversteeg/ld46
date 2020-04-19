@@ -53,6 +53,38 @@ pub fn single_pixel(color: Color) -> Result<SpriteRef> {
     specs_blit::load(buf, 1)
 }
 
+pub fn generate_planet() -> Result<SpriteRef> {
+    let (width, height, options) = (
+        6,
+        crate::HEIGHT / 2,
+        Options {
+            mirror_x: false,
+            mirror_y: true,
+            colored: true,
+            edge_brightness: 0.0,
+            color_variations: 0.8547504,
+            brightness_noise: 0.9012264,
+            saturation: 0.0,
+            seed: unsafe { miniquad::rand() as u64 },
+        },
+    );
+    let mut data = vec![Empty; width * height];
+
+    for x in 0..2 {
+        for y in 0..height {
+            data[x + y * width] = Body2;
+        }
+    }
+    for y in height / 2..height {
+        data[y * width + 1] = Body1;
+    }
+    for y in height / 3..height {
+        data[y * width + 2] = Body2;
+    }
+
+    generate(width, options, &data, 1)
+}
+
 pub struct Sprites {
     pub red_particle: SpriteRef,
     pub white_particle: SpriteRef,
@@ -62,6 +94,7 @@ pub struct Sprites {
     pub small_projectile: SpriteRef,
     pub small_projectile_width: f64,
     pub small_projectile_height: f64,
+    pub planet: SpriteRef,
 }
 
 impl Sprites {
@@ -72,6 +105,7 @@ impl Sprites {
             Sprites::generate_big_projectile()?;
         let (small_projectile, small_projectile_width, small_projectile_height) =
             Sprites::generate_small_projectile()?;
+        let planet = generate_planet()?;
 
         Ok(Self {
             red_particle,
@@ -82,6 +116,7 @@ impl Sprites {
             small_projectile,
             small_projectile_width,
             small_projectile_height,
+            planet,
         })
     }
 

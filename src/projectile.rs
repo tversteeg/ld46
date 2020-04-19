@@ -1,5 +1,6 @@
 use crate::{
-    color, effect::ScreenFlash, entity::Lifetime, lives::Lives, physics::*, player::Player, random,
+    color, effect::ScreenFlash, entity::Lifetime, lives::Lives, particle::ParticleEmitter,
+    physics::*, player::Player, random, sprite::Sprites,
 };
 use specs_blit::{specs::*, Sprite, SpriteRef};
 
@@ -55,12 +56,13 @@ pub struct ProjectileEmitterSystem;
 impl<'a> System<'a> for ProjectileEmitterSystem {
     type SystemData = (
         Entities<'a>,
+        ReadExpect<'a, Sprites>,
         WriteStorage<'a, ProjectileEmitter>,
         ReadStorage<'a, Position>,
         Read<'a, LazyUpdate>,
     );
 
-    fn run(&mut self, (entities, mut emitter, pos, updater): Self::SystemData) {
+    fn run(&mut self, (entities, sprites, mut emitter, pos, updater): Self::SystemData) {
         for (emitter, pos) in (&mut emitter, &pos).join() {
             emitter.current_interval += 1.0;
             if emitter.current_interval > emitter.interval {
@@ -82,6 +84,13 @@ impl<'a> System<'a> for ProjectileEmitterSystem {
                 updater.insert(projectile, emitter.size.clone());
                 // Use the sprite reference of the emitter
                 updater.insert(projectile, Sprite::new(emitter.sprite.clone()));
+
+                updater.insert(
+                    projectile,
+                    ParticleEmitter::new(3.0, sprites.white_particle.clone())
+                        .with_dispersion(1.0)
+                        .with_offset(emitter.size.center_offset()),
+                );
             }
         }
     }
