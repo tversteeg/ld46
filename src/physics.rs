@@ -32,10 +32,6 @@ impl Velocity {
         Self(Vec2::new(x, y))
     }
 
-    pub fn from_vec2(v: Vec2) -> Self {
-        Self(v)
-    }
-
     /// Construct a new velocity where the X and Y velocity are randomly placed inside the supplied
     /// range.
     pub fn from_random_range(range: f64) -> Self {
@@ -43,10 +39,6 @@ impl Velocity {
         let rand_y = random::range(-range, range);
 
         Self(Vec2::new(rand_x, rand_y))
-    }
-
-    pub fn zero() -> Self {
-        Self(Vec2::new(0.0, 0.0))
     }
 }
 
@@ -72,10 +64,6 @@ impl BoundingBox {
             min: pos.0,
             max: pos.0 + self.0,
         }
-    }
-
-    pub fn center(&self, pos: &Position) -> Vec2 {
-        self.to_aabr(pos).center()
     }
 
     pub fn center_offset(&self) -> Vec2 {

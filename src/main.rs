@@ -78,6 +78,8 @@ impl<'a, 'b> Game<'a, 'b> {
 
         world.register::<entity::Lifetime>();
 
+        world.register::<upgrade::HoldProjectile>();
+
         world.register::<effect::ScreenFlash>();
 
         world.register::<sprite::RotationFollowsVelocity>();
@@ -114,10 +116,10 @@ impl<'a, 'b> Game<'a, 'b> {
                 "projectile_emitter",
                 &[],
             )
-            .with(projectile::ProjectileSystem, "projectile", &[])
             .with(particle::ParticleEmitterSystem, "particle_emitter", &[])
             .with(entity::LifetimeSystem, "lifetime", &[])
             .with(player::PlayerSystem, "player", &[])
+            .with(projectile::ProjectileSystem, "projectile", &["player"])
             .with(enemy::EnemySystem, "enemy", &[])
             .with(enemy::EnemyEmitterSystem, "enemy_emitter", &[])
             .with(movement::MovementSystem, "movement", &[])

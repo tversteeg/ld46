@@ -1,8 +1,13 @@
 use crate::{gui::Gui, input::Input, money::Wallet, phase::Phase};
-use specs_blit::PixelBuffer;
+use specs_blit::{specs::*, PixelBuffer};
 
-pub const HOLD_PRICE: usize = 2000;
-pub const SPLIT_PRICE: usize = 1000;
+type Vec2 = vek::Vec2<f64>;
+
+#[derive(Component, Debug, Default)]
+pub struct HoldProjectile(pub Vec2);
+
+pub const HOLD_PRICE: usize = 1000;
+pub const SPLIT_PRICE: usize = 2000;
 
 #[derive(Debug, Default)]
 pub struct Upgrades {
@@ -39,10 +44,7 @@ impl Upgrades {
         if !self.hold {
             gui.draw_label(
                 buffer,
-                format!(
-                    "Hold the ball & release it on click\n({} scrap)",
-                    HOLD_PRICE
-                ),
+                format!("Hold the rockets with mouse button\n({} scrap)", HOLD_PRICE),
                 pos.0 + 10,
                 pos.1 + 5,
             );
@@ -58,7 +60,7 @@ impl Upgrades {
         if !self.split {
             gui.draw_label(
                 buffer,
-                format!("Big balls split on contact\n({} scrap)", SPLIT_PRICE),
+                format!("Big rockets split on contact\n({} scrap)", SPLIT_PRICE),
                 pos.0 + 10,
                 pos.1 + 5,
             );

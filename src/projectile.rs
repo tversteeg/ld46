@@ -1,6 +1,15 @@
 use crate::{
-    color, effect::ScreenFlash, entity::Lifetime, lives::Lives, particle::ParticleEmitter,
-    physics::*, player::Player, random, sprite::Sprites, upgrade::Upgrades,
+    color,
+    effect::ScreenFlash,
+    entity::Lifetime,
+    input::Input,
+    lives::Lives,
+    particle::ParticleEmitter,
+    physics::*,
+    player::Player,
+    random,
+    sprite::Sprites,
+    upgrade::{HoldProjectile, Upgrades},
 };
 use specs_blit::{specs::*, Sprite, SpriteRef};
 
@@ -133,11 +142,13 @@ impl<'a> System<'a> for ProjectileSystem {
         Option<Write<'a, Lives>>,
         ReadExpect<'a, Sprites>,
         Read<'a, Upgrades>,
+        Read<'a, Input>,
         ReadStorage<'a, Projectile>,
-        ReadStorage<'a, Position>,
+        WriteStorage<'a, Position>,
         ReadStorage<'a, Player>,
         ReadStorage<'a, BoundingBox>,
         ReadStorage<'a, SplitInto>,
+        ReadStorage<'a, HoldProjectile>,
         WriteStorage<'a, Velocity>,
         Read<'a, LazyUpdate>,
     );
@@ -149,15 +160,34 @@ impl<'a> System<'a> for ProjectileSystem {
             lives,
             sprites,
             upgrades,
+            input,
             projectile,
-            pos,
+            mut pos,
             player,
             bb,
             split_into,
+            hold,
             mut vel,
             updater,
         ): Self::SystemData,
     ) {
+        if upgrades.hold {
+            let mut player_pos = Vec2::zero();
+            for (pos, _) in (&pos, &player).join() {
+                player_pos = pos.0;
+            }
+
+            for (entity, mut projectile_pos, projectile_hold, _) in
+                (&*entities, &mut pos, &hold, &projectile).join()
+            {
+                projectile_pos.0 = player_pos + projectile_hold.0;
+                if !input.mouse_down() {
+                    // When the mouse is released release all entities
+                    updater.remove::<HoldProjectile>(entity);
+                }
+            }
+        }
+
         if let Some(mut lives) = lives {
             for (entity, pos, _) in (&*entities, &pos, &projectile).join() {
                 if pos.0.x <= 0.0 {
@@ -174,16 +204,24 @@ impl<'a> System<'a> for ProjectileSystem {
 
         for (player_pos, player_bb, _) in (&pos, &bb, &player).join() {
             let player_aabr = player_bb.to_aabr(player_pos);
-            for (entity, projectile_pos, projectile_bb, projectile_vel, projectile_split_into, _) in
-                (
-                    &*entities,
-                    &pos,
-                    &bb,
-                    &mut vel,
-                    (&split_into).maybe(),
-                    &projectile,
-                )
-                    .join()
+            for (
+                entity,
+                projectile_pos,
+                projectile_bb,
+                projectile_vel,
+                projectile_split_into,
+                _,
+                _,
+            ) in (
+                &*entities,
+                &pos,
+                &bb,
+                &mut vel,
+                (&split_into).maybe(),
+                &projectile,
+                !&hold,
+            )
+                .join()
             {
                 // Don't collide with projectiles already moving in the proper direction
                 if projectile_vel.x > 0.0 {
@@ -193,7 +231,10 @@ impl<'a> System<'a> for ProjectileSystem {
                 let projectile_aabr = projectile_bb.to_aabr(projectile_pos);
 
                 if projectile_aabr.collides_with_aabr(player_aabr) {
-                    if upgrades.hold {}
+                    if upgrades.hold && input.mouse_down() {
+                        updater.insert(entity, HoldProjectile(projectile_pos.0 - player_pos.0));
+                        continue;
+                    }
                     let speed = projectile_vel.magnitude();
                     let angle = (projectile_pos.0 - player_aabr.center() - Vec2::new(-20.0, 0.0))
                         .normalized();
