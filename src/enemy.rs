@@ -15,25 +15,12 @@ use crate::{
     sprite::Sprites,
 };
 use derive_deref::{Deref, DerefMut};
-use specs_blit::{specs::*, Sprite};
-
-const ENEMY_VELOCITY_RESOURCES_MIN_FACTOR_X: f64 = 0.3;
-const ENEMY_VELOCITY_RESOURCES_MAX_FACTOR_X: f64 = 0.5;
-const ENEMY_VELOCITY_RESOURCES_MIN_FACTOR_Y: f64 = 0.02;
-const ENEMY_VELOCITY_RESOURCES_MAX_FACTOR_Y: f64 = 0.5;
-const ENEMY_VELOCITY_RESOURCES_SPEED_X: f64 = 0.02;
-const ENEMY_VELOCITY_RESOURCES_SPEED_Y: f64 = 0.03;
-const ENEMY_VELOCITY_MIN_SPEED: f64 = 0.1;
-const ENEMY_ZIGZAG_RESOURCES_MIN_FACTOR: f64 = 0.3;
-const ENEMY_ZIGZAG_RESOURCES_MAX_FACTOR: f64 = 0.5;
-const ENEMY_ZIGZAG_RESOURCES_SPEED: f64 = 0.1;
+use specs_blit::{specs::*, Sprite, SpriteRef};
 
 const ENEMY_ENGINE_PARTICLE_LIFETIME: f64 = 10.0;
 const ENEMY_DEAD_EMITTER_LIFETIME: f64 = 5.0;
 const ENEMY_DEAD_PARTICLE_LIFETIME: f64 = 10.0;
 
-const MIN_RESOURCE_USAGE_FACTOR: f64 = 0.01;
-const MAX_RESOURCE_USAGE_FACTOR: f64 = 0.3;
 const TIME_RANDOM_FACTOR: f64 = 10.0;
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
@@ -44,6 +31,16 @@ pub enum EnemyType {
 }
 
 impl EnemyType {
+    pub fn random() -> Self {
+        if random::range(0.0, 1.0) < 0.1 {
+            EnemyType::Big
+        } else if random::range(0.0, 1.0) < 0.2 {
+            EnemyType::Medium
+        } else {
+            EnemyType::Small
+        }
+    }
+
     pub fn bb(self) -> BoundingBox {
         match self {
             EnemyType::Small => BoundingBox::new(10.0, 16.0),
@@ -51,43 +48,161 @@ impl EnemyType {
             EnemyType::Big => BoundingBox::new(22.0, 24.0),
         }
     }
+
+    pub fn sprite(self, ships: &Ships) -> SpriteRef {
+        ships.enemy(self)
+    }
+
+    pub fn projectile_sprite(self, sprites: &Sprites) -> (SpriteRef, f64, f64) {
+        match self {
+            EnemyType::Small => sprites.small_projectile(),
+            _ => sprites.big_projectile(),
+        }
+    }
+
+    pub fn speed_x(self) -> f64 {
+        match self {
+            EnemyType::Small => random::range(1.0, 1.5),
+            EnemyType::Medium => random::range(0.3, 0.5),
+            EnemyType::Big => random::range(0.3, 0.4),
+        }
+    }
+
+    pub fn speed_y(self) -> f64 {
+        match self {
+            EnemyType::Small => random::range(-0.8, 0.8),
+            EnemyType::Medium => random::range(-0.3, 0.3),
+            EnemyType::Big => random::range(-0.4, 0.4),
+        }
+    }
+
+    pub fn shoot_interval(self) -> f64 {
+        (match self {
+            EnemyType::Small => random::range(2.0, 4.0),
+            EnemyType::Medium => random::range(0.8, 1.0),
+            EnemyType::Big => random::range(3.0, 4.0),
+        }) * 60.0
+    }
+
+    pub fn shoot_spread(self) -> f64 {
+        match self {
+            EnemyType::Small => random::range(0.0, 0.2),
+            EnemyType::Medium => random::range(0.6, 0.8),
+            EnemyType::Big => random::range(1.0, 2.0),
+        }
+    }
+
+    pub fn money(self) -> usize {
+        (match self {
+            EnemyType::Small => random::range(20.0, 30.0),
+            EnemyType::Medium => random::range(50.0, 80.0),
+            EnemyType::Big => random::range(100.0, 150.0),
+        }) as usize
+    }
+
+    pub fn particle_amount(self) -> u8 {
+        match self {
+            EnemyType::Small => 1,
+            EnemyType::Medium => 4,
+            EnemyType::Big => 12,
+        }
+    }
+
+    pub fn spawn_rest_before(self) -> f64 {
+        match self {
+            EnemyType::Small => 0.0,
+            EnemyType::Medium => 0.5 * 60.0,
+            EnemyType::Big => 1.0 * 60.0,
+        }
+    }
+
+    pub fn spawn_rest_after(self) -> f64 {
+        match self {
+            EnemyType::Small => 0.0,
+            EnemyType::Medium => 3.0 * 60.0,
+            EnemyType::Big => 4.0 * 60.0,
+        }
+    }
 }
 
 #[derive(Component, Debug, Default)]
 pub struct EnemyEmitter {
     /// Time, resources for enemy.
-    spawner: Vec<(f64, f64)>,
+    spawner: Vec<(f64, EnemyType)>,
     current_time: f64,
     total_time: f64,
 }
 
 impl EnemyEmitter {
-    pub fn new(resources: f64, time: f64) -> Self {
-        // Fill the resource list with random values until it's full
-        let mut cached_resources = vec![];
-        let mut current_resources = 0.0;
-        while current_resources < resources {
-            let enemy_resources = random::range(
-                resources * MIN_RESOURCE_USAGE_FACTOR,
-                resources * MAX_RESOURCE_USAGE_FACTOR,
-            );
-            if enemy_resources > 10.0 {
-                cached_resources.push(enemy_resources);
-            }
-            current_resources += enemy_resources;
+    pub fn new(level: Option<usize>) -> Self {
+        if level.is_none() {
+            // Big ship is spawning these
+            return Self {
+                spawner: vec![
+                    (2.0 * 60.0, EnemyType::Small),
+                    (3.5 * 60.0, EnemyType::Small),
+                    (5.0 * 60.0, EnemyType::Small),
+                    (7.0 * 60.0, EnemyType::Small),
+                ],
+                current_time: 0.0,
+                total_time: 10.0 * 60.0,
+            };
         }
 
+        let level = level.unwrap();
+        match level {
+            1 => {
+                return Self {
+                    spawner: vec![(30.0, EnemyType::Small)],
+                    current_time: 0.0,
+                    total_time: 5.0 * 60.0,
+                };
+            }
+            2 => {
+                return Self {
+                    spawner: vec![(30.0, EnemyType::Small), (120.0, EnemyType::Small)],
+                    current_time: 0.0,
+                    total_time: 5.0 * 60.0,
+                };
+            }
+            3 => {
+                return Self {
+                    spawner: vec![(30.0, EnemyType::Medium)],
+                    current_time: 0.0,
+                    total_time: 5.0 * 60.0,
+                };
+            }
+            4 => {
+                return Self {
+                    spawner: vec![(30.0, EnemyType::Big)],
+                    current_time: 0.0,
+                    total_time: 5.0 * 60.0,
+                };
+            }
+            _ => (),
+        }
+
+        let total_time = level as f64 * 12.0 * 60.0;
+
         // Spread it out over time
-        let time_dist = time / cached_resources.len() as f64;
-        let mut spawner = cached_resources
-            .into_iter()
-            .enumerate()
-            .map(|(index, resources)| {
-                (
-                    index as f64 * time_dist
-                        + random::range(-TIME_RANDOM_FACTOR, TIME_RANDOM_FACTOR),
-                    resources,
-                )
+        let amount_of_enemies = level * level;
+        let time_dist = total_time / amount_of_enemies as f64;
+        let mut rest = 0.0;
+        let mut spawner = (0..amount_of_enemies)
+            .map(|index| {
+                let type_ = EnemyType::random();
+                rest += type_.spawn_rest_before();
+
+                let result = (
+                    index as f64
+                        * (time_dist + random::range(-TIME_RANDOM_FACTOR, TIME_RANDOM_FACTOR))
+                        + rest,
+                    type_,
+                );
+
+                rest += type_.spawn_rest_after();
+
+                result
             })
             .collect::<Vec<_>>();
 
@@ -99,7 +214,7 @@ impl EnemyEmitter {
         Self {
             spawner,
             current_time: 0.0,
-            total_time: time,
+            total_time,
         }
     }
 
@@ -108,24 +223,17 @@ impl EnemyEmitter {
         updater: &LazyUpdate,
         sprites: &Sprites,
         ships: &Ships,
-        mut resources: f64,
+        type_: EnemyType,
         pos: &Option<&Position>,
     ) {
         let enemy = entities.create();
         updater.insert(enemy, Enemy);
 
-        let (type_, particle_amount, big_projectile) = if resources > 100.0 && random::bool() {
-            updater.insert(enemy, EnemyEmitter::new(resources - 100.0, 10.0 * 60.0));
-            // Always use the same resources for the big one
-            resources = 20.0;
+        if type_ == EnemyType::Big {
+            updater.insert(enemy, EnemyEmitter::new(None));
+        }
 
-            (EnemyType::Big, 4, true)
-        } else if resources > 50.0 && random::bool() {
-            resources -= 20.0;
-            (EnemyType::Medium, 2, true)
-        } else {
-            (EnemyType::Small, 1, false)
-        };
+        let bb = type_.bb();
 
         updater.insert(
             enemy,
@@ -133,88 +241,53 @@ impl EnemyEmitter {
                 Some(pos) => (*pos).clone(),
                 None => Position::new(
                     crate::WIDTH as f64 - 10.0,
-                    random::range(0.0, crate::HEIGHT as f64),
+                    random::range(0.0, crate::HEIGHT as f64 - bb.y),
                 ),
             },
         );
 
-        let bb = type_.bb();
-        /*
-        updater.insert(
-            enemy,
-            ParticleEmitter::new(
-                ENEMY_ENGINE_PARTICLE_LIFETIME + resources / 100.0,
-                sprites.white_particle.clone(),
-            )
-            .with_amount(particle_amount)
-            .with_dispersion(1.0 - resources / 200.0)
-            .with_offset(bb.center_offset()),
-        );
-        */
+        updater.insert(enemy, Sprite::new(type_.sprite(&ships)));
 
-        let x_velocity_resources = random::range(
-            ENEMY_VELOCITY_RESOURCES_MIN_FACTOR_X,
-            ENEMY_VELOCITY_RESOURCES_MAX_FACTOR_X,
-        ) * resources;
-        resources -= x_velocity_resources;
-
-        let x_velocity =
-            (x_velocity_resources * ENEMY_VELOCITY_RESOURCES_SPEED_X) + ENEMY_VELOCITY_MIN_SPEED;
-
-        updater.insert(enemy, Sprite::new(ships.enemy(type_)));
+        let speed_x = type_.speed_x();
+        let speed_y = type_.speed_y();
 
         if random::bool() {
             // Straight pattern
-            let y_velocity_resources = random::range(
-                ENEMY_VELOCITY_RESOURCES_MIN_FACTOR_Y,
-                ENEMY_VELOCITY_RESOURCES_MAX_FACTOR_Y,
-            ) * resources;
-            resources -= y_velocity_resources;
-
-            updater.insert(
-                enemy,
-                Velocity::new(
-                    -x_velocity,
-                    y_velocity_resources * ENEMY_VELOCITY_RESOURCES_SPEED_Y,
-                ),
-            );
+            updater.insert(enemy, Velocity::new(-speed_x, speed_y));
         } else {
             // Zigzag pattern
-            updater.insert(enemy, Velocity::new(-x_velocity, 0.0));
-
-            let zigzag_amount_resources = random::range(
-                ENEMY_ZIGZAG_RESOURCES_MIN_FACTOR,
-                ENEMY_ZIGZAG_RESOURCES_MAX_FACTOR,
-            ) * resources;
-            resources -= zigzag_amount_resources;
-
+            updater.insert(enemy, Velocity::new(-speed_x, 0.0));
+            updater.insert(enemy, Zigzag::new(speed_y, random::range(0.001, 0.2)));
+        }
+        if speed_x > 0.7 {
             updater.insert(
                 enemy,
-                Zigzag::new(
-                    zigzag_amount_resources * ENEMY_ZIGZAG_RESOURCES_SPEED,
-                    random::range(0.001, 0.2),
-                ),
+                ParticleEmitter::new(
+                    ENEMY_ENGINE_PARTICLE_LIFETIME,
+                    sprites.white_particle.clone(),
+                )
+                .with_amount(type_.particle_amount())
+                .with_dispersion(speed_x * 0.2)
+                .with_offset(bb.center_offset()),
             );
         }
 
-        let (proj_sprite, proj_width, proj_height) = if big_projectile {
-            sprites.big_projectile()
-        } else {
-            sprites.small_projectile()
-        };
+        let (proj_sprite, proj_width, proj_height) = type_.projectile_sprite(&sprites);
 
         // Shoot bullets
         updater.insert(
             enemy,
             ProjectileEmitter::new(proj_sprite, BoundingBox::new(proj_width, proj_height))
-                .with_speed(x_velocity + 3.0)
+                .with_speed(speed_x + 2.0)
+                .with_spread(type_.shoot_spread())
+                .with_interval(type_.shoot_interval())
                 .with_offset(bb.center_offset()),
         );
 
         updater.insert(enemy, bb);
 
         // The rest of the resources is the leftover money
-        updater.insert(enemy, Money::new(resources as usize));
+        updater.insert(enemy, Money::new(type_.money()));
     }
 
     pub fn enemies_left(&self) -> usize {
@@ -305,7 +378,7 @@ impl<'a> System<'a> for EnemyCollisionSystem {
                             sprites.white_particle.clone(),
                         )
                         .with_dispersion(3.0)
-                        .with_amount(4),
+                        .with_amount(8),
                     );
                     updater.insert(emitter, Position::from_vec2(enemy_aabr.center()));
                     updater.insert(emitter, Position::from_vec2(enemy_aabr.center()));
@@ -385,10 +458,10 @@ impl<'a> System<'a> for EnemyEmitterSystem {
                 }
                 emitter.current_time += 1.0;
 
-                if let Some((time, resources)) = emitter.spawner.first() {
+                if let Some((time, type_)) = emitter.spawner.first() {
                     if *time < emitter.current_time {
                         EnemyEmitter::spawn_enemy_with_resource_usage(
-                            &entities, &updater, &sprites, &ships, *resources, &pos,
+                            &entities, &updater, &sprites, &ships, *type_, &pos,
                         );
 
                         emitter.spawner.remove(0);

@@ -27,19 +27,33 @@ pub struct ProjectileEmitter {
 
 impl ProjectileEmitter {
     pub fn new(sprite: SpriteRef, size: BoundingBox) -> Self {
+        let interval = random::range(200.0, 400.0);
         Self {
             speed: 1.0,
             spread: 1.0,
             sprite,
-            interval: random::range(200.0, 400.0),
-            current_interval: 0.0,
+            interval,
+            current_interval: random::range(0.0, interval),
             offset: Vec2::new(0.0, 0.0),
             size,
         }
     }
 
+    pub fn with_interval(mut self, interval: f64) -> Self {
+        self.interval = interval;
+        self.current_interval = random::range(0.0, interval);
+
+        self
+    }
+
     pub fn with_speed(mut self, speed: f64) -> Self {
         self.speed = speed;
+
+        self
+    }
+
+    pub fn with_spread(mut self, spread: f64) -> Self {
+        self.spread = spread;
 
         self
     }
@@ -65,7 +79,7 @@ impl<'a> System<'a> for ProjectileEmitterSystem {
     fn run(&mut self, (entities, sprites, mut emitter, pos, updater): Self::SystemData) {
         for (emitter, pos) in (&mut emitter, &pos).join() {
             emitter.current_interval += 1.0;
-            if emitter.current_interval > emitter.interval {
+            if emitter.current_interval > emitter.interval && pos.x > 200.0 {
                 emitter.current_interval = 0.0;
 
                 // Spawn a new projectile

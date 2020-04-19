@@ -32,11 +32,6 @@ use specs_blit::{specs::prelude::*, PixelBuffer, Sprite};
 pub const WIDTH: usize = 400;
 pub const HEIGHT: usize = 300;
 
-const LEVEL_TIME_MINIMUM: f64 = 30.0;
-const LEVEL_TIME_SCALE: f64 = 5.0;
-const LEVEL_RESOURCES_MINIMUM: f64 = 500.0;
-const LEVEL_RESOURCES_SCALE: f64 = 20.0;
-
 /// Our game state.
 struct Game<'a, 'b> {
     /// The specs world.
@@ -46,7 +41,7 @@ struct Game<'a, 'b> {
     /// Our wrapper around the OpenGL calls.
     render: Render,
 
-    level: f64,
+    level: usize,
     background: Background,
 }
 
@@ -137,7 +132,7 @@ impl<'a, 'b> Game<'a, 'b> {
             world,
             dispatcher,
             render,
-            level: 1.0,
+            level: 1,
             background: Background::new(),
         };
         game.switch_phase(Phase::default());
@@ -157,7 +152,7 @@ impl<'a, 'b> Game<'a, 'b> {
         match phase {
             Phase::Menu => {}
             Phase::Initialize => {
-                self.level = 1.0;
+                self.level = 5;
 
                 // Generate the ships
                 self.world.insert(ship::Ships::generate());
@@ -165,7 +160,7 @@ impl<'a, 'b> Game<'a, 'b> {
                 self.switch_phase(Phase::Play);
             }
             Phase::Setup => {
-                self.level += 1.0;
+                self.level += 1;
             }
             Phase::Play => {
                 self.world
@@ -186,10 +181,7 @@ impl<'a, 'b> Game<'a, 'b> {
 
                 self.world
                     .create_entity()
-                    .with(enemy::EnemyEmitter::new(
-                        LEVEL_RESOURCES_MINIMUM + self.level * LEVEL_RESOURCES_SCALE,
-                        LEVEL_TIME_MINIMUM * 60.0 + self.level * LEVEL_TIME_SCALE * 60.0,
-                    ))
+                    .with(enemy::EnemyEmitter::new(Some(self.level)))
                     .build();
 
                 // Spawn the paddle
