@@ -1,14 +1,39 @@
-use crate::{color, physics::Position};
+use crate::{
+    color,
+    physics::{Position, Velocity},
+};
 use anyhow::Result;
 use specs_blit::{
     blit::{BlitBuffer, Color},
-    specs::{Join, ReadStorage, System, WriteStorage},
+    specs::*,
     Sprite, SpriteRef,
 };
 use sprite_gen::{
     MaskValue::{self, *},
     Options,
 };
+
+type Vec2 = vek::Vec2<f64>;
+
+#[derive(Component, Debug, Default)]
+#[storage(NullStorage)]
+pub struct RotationFollowsVelocity;
+
+pub struct SpriteRotationSystem;
+impl<'a> System<'a> for SpriteRotationSystem {
+    type SystemData = (
+        ReadStorage<'a, Velocity>,
+        ReadStorage<'a, RotationFollowsVelocity>,
+        WriteStorage<'a, Sprite>,
+    );
+
+    fn run(&mut self, (vel, marker, mut sprite): Self::SystemData) {
+        for (vel, _, sprite) in (&vel, &marker, &mut sprite).join() {
+            let rot = Vec2::new(-1.0, 0.0).angle_between(vel.0).to_degrees();
+            sprite.set_rot(rot as i16);
+        }
+    }
+}
 
 /// A system that connects sprites to the physics position.
 pub struct SpritePositionSystem;
@@ -37,20 +62,15 @@ pub fn buffer(width: usize, options: Options, mask: &[MaskValue]) -> BlitBuffer 
 }
 
 /// Generate a random sprite from a mask and return it as a blit buffer.
-pub fn generate(
-    width: usize,
-    options: Options,
-    mask: &[MaskValue],
-    rotations: u16,
-) -> Result<SpriteRef> {
-    specs_blit::load(buffer(width, options, mask), rotations)
+pub fn generate(width: usize, options: Options, mask: &[MaskValue]) -> Result<SpriteRef> {
+    specs_blit::load(buffer(width, options, mask))
 }
 
 /// Generate a single pixel sprite.
 pub fn single_pixel(color: Color) -> Result<SpriteRef> {
     let buf = BlitBuffer::from_buffer(&[color.u32()], 1, Color::from_u32(0));
 
-    specs_blit::load(buf, 1)
+    specs_blit::load(buf)
 }
 
 pub fn generate_planet() -> Result<SpriteRef> {
@@ -82,7 +102,7 @@ pub fn generate_planet() -> Result<SpriteRef> {
         data[y * width + 2] = Body2;
     }
 
-    generate(width, options, &data, 1)
+    generate(width, options, &data)
 }
 
 pub struct Sprites {
@@ -157,7 +177,7 @@ impl Sprites {
         ];
 
         Ok((
-            generate(width, options, &data, 1)?,
+            generate(width, options, &data)?,
             width as f64 * 2.0,
             height as f64 * 2.0,
         ))
@@ -183,7 +203,7 @@ impl Sprites {
         ];
 
         Ok((
-            generate(width, options, &data, 1)?,
+            generate(width, options, &data)?,
             width as f64 * 2.0,
             height as f64 * 2.0,
         ))

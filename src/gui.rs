@@ -1,5 +1,9 @@
-use direct_gui::Gui as InternalGui;
-use specs_blit::PixelBuffer;
+use crate::{input::Input, upgrade::Upgrades};
+use direct_gui::{
+    controls::{Button, ControlState},
+    Gui as InternalGui,
+};
+use specs_blit::{blit::Color, PixelBuffer};
 
 /// A GUI system that allows us to draw nice buttons and text.
 pub struct Gui {
@@ -9,9 +13,13 @@ pub struct Gui {
 impl Gui {
     /// Instantiate a new gui with the proper framebuffer size.
     pub fn new(buffer_width: usize, buffer_height: usize) -> Self {
-        Self {
-            internal: InternalGui::new((buffer_width as i32, buffer_height as i32)),
+        let mut internal = InternalGui::new((buffer_width as i32, buffer_height as i32));
+
+        for (pos, size) in Upgrades::buttons() {
+            internal.register(Button::new(size, Color::from_u32(0x333333)).with_pos(pos.0, pos.1));
         }
+
+        Self { internal }
     }
 
     /// Draw a label.
@@ -28,5 +36,18 @@ impl Gui {
             text,
             (x, y),
         );
+    }
+
+    /// Draw everything.
+    pub fn draw(&mut self, buffer: &mut PixelBuffer, input: &Input) {
+        let mut cs = ControlState {
+            ..ControlState::default()
+        };
+
+        cs.mouse_pos = (input.mouse_x() - 1, input.mouse_y() - 1);
+        cs.mouse_down = input.mouse_down();
+
+        self.internal.update(&cs);
+        self.internal.draw_to_buffer(buffer.pixels_mut());
     }
 }

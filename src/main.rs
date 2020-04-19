@@ -17,10 +17,12 @@ mod random;
 mod render;
 mod ship;
 mod sprite;
+mod upgrade;
 
 use crate::{
     background::Background, enemy::EnemiesLeft, gui::Gui, input::Input, lives::Lives,
     money::Wallet, phase::Phase, physics::Position, render::Render, sprite::Sprites,
+    upgrade::Upgrades,
 };
 use anyhow::Result;
 use miniquad::{
@@ -77,6 +79,8 @@ impl<'a, 'b> Game<'a, 'b> {
 
         world.register::<effect::ScreenFlash>();
 
+        world.register::<sprite::RotationFollowsVelocity>();
+
         // Load the sprite rendering component
         world.register::<Sprite>();
 
@@ -99,6 +103,9 @@ impl<'a, 'b> Game<'a, 'b> {
         // Money
         world.insert(Wallet::default());
 
+        // The upgrades
+        world.insert(Upgrades::default());
+
         // Setup the dispatcher with the blit system
         let dispatcher = DispatcherBuilder::new()
             .with(
@@ -118,6 +125,7 @@ impl<'a, 'b> Game<'a, 'b> {
             .with(physics::BoundingBoxSystem, "bb", &["velocity"])
             .with(enemy::EnemyCollisionSystem, "enemy_collision", &["bb"])
             .with(sprite::SpritePositionSystem, "sprite_pos", &["velocity"])
+            .with(sprite::SpriteRotationSystem, "sprite_rot", &["velocity"])
             .with_thread_local(specs_blit::RenderSystem)
             .with_thread_local(effect::ScreenFlashSystem)
             .build();
@@ -153,6 +161,7 @@ impl<'a, 'b> Game<'a, 'b> {
             Phase::Menu => {}
             Phase::Initialize => {
                 self.level = 1;
+                self.world.write_resource::<Wallet>().reset();
 
                 // Generate the ships
                 self.world.insert(ship::Ships::generate());
@@ -192,7 +201,7 @@ impl<'a, 'b> Game<'a, 'b> {
     }
 
     pub fn render_phase(&mut self) {
-        let phase = self.world.read_resource::<Phase>();
+        let mut phase = self.world.write_resource::<Phase>();
 
         let mut buffer = self.world.write_resource::<PixelBuffer>();
         let mut gui = self.world.write_resource::<Gui>();
@@ -202,14 +211,18 @@ impl<'a, 'b> Game<'a, 'b> {
                 gui.draw_label(&mut buffer, "Click to play!", 130, 145);
             }
             Phase::Setup => {
-                gui.draw_label(&mut buffer, format!("Level {}", self.level), 160, 20);
-                gui.draw_label(&mut buffer, "Click to start!", 120, 200);
+                let input = self.world.read_resource::<Input>();
+                gui.draw(&mut buffer, &input);
 
-                gui.draw_label(
+                let mut wallet = self.world.write_resource::<Wallet>();
+                let mut upgrades = self.world.write_resource::<Upgrades>();
+                upgrades.render(
                     &mut buffer,
-                    format!("Scrap {}", self.world.read_resource::<Wallet>().money()),
-                    160,
-                    40,
+                    &mut gui,
+                    &mut wallet,
+                    &mut phase,
+                    &input,
+                    self.level,
                 );
             }
             Phase::Play | Phase::WaitingForLastEnemy => {
@@ -274,22 +287,6 @@ impl<'a, 'b> EventHandler for Game<'a, 'b> {
         self.background.copy(&mut buffer.pixels_mut());
     }
 
-    fn key_up_event(&mut self, _ctx: &mut Context, keycode: KeyCode, _keymods: KeyMods) {
-        // Pass the input to the resource
-        (*self.world.write_resource::<Input>()).handle_key(keycode, false);
-    }
-
-    fn key_down_event(
-        &mut self,
-        _ctx: &mut Context,
-        keycode: KeyCode,
-        _keymods: KeyMods,
-        _repeat: bool,
-    ) {
-        // Pass the input to the resource
-        (*self.world.write_resource::<Input>()).handle_key(keycode, true);
-    }
-
     fn mouse_button_down_event(
         &mut self,
         _ctx: &mut Context,
@@ -301,8 +298,6 @@ impl<'a, 'b> EventHandler for Game<'a, 'b> {
         let phase = (*self.world.read_resource::<Phase>()).clone();
         if phase == Phase::Menu || phase == Phase::GameOver {
             self.switch_phase(Phase::Initialize);
-        } else if phase == Phase::Setup {
-            self.switch_phase(Phase::Play);
         }
 
         (*self.world.write_resource::<Input>()).handle_mouse_button(true);

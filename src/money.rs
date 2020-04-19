@@ -1,4 +1,4 @@
-use specs_blit::{specs::*, Sprite};
+use specs_blit::specs::*;
 
 #[derive(Debug, Default)]
 pub struct Wallet {
@@ -12,6 +12,14 @@ impl Wallet {
 
     pub fn add(&mut self, money: &Money) {
         self.amount += money.amount();
+    }
+
+    pub fn subtract(&mut self, amount: usize) {
+        self.amount -= amount;
+    }
+
+    pub fn reset(&mut self) {
+        self.amount = 0;
     }
 }
 

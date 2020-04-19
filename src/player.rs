@@ -72,7 +72,7 @@ pub fn spawn_player(world: &mut World) -> Result<()> {
         Empty, Body2, Empty, Body1, Body1, Empty, Body2, Body1, Empty, Empty, Empty, Body2, Body2,
         Body2, Body1, Body1, Empty, Empty, Body1, Solid, Empty,
     ];
-    let sprite = sprite::generate(width, options, &data, 1)?;
+    let sprite = sprite::generate(width, options, &data)?;
 
     world
         .create_entity()

@@ -12,7 +12,7 @@ use crate::{
     projectile::{Projectile, ProjectileEmitter},
     random,
     ship::Ships,
-    sprite::Sprites,
+    sprite::{RotationFollowsVelocity, Sprites},
 };
 use derive_deref::{Deref, DerefMut};
 use specs_blit::{specs::*, Sprite, SpriteRef};
@@ -247,6 +247,7 @@ impl EnemyEmitter {
         );
 
         updater.insert(enemy, Sprite::new(type_.sprite(&ships)));
+        updater.insert(enemy, RotationFollowsVelocity);
 
         let speed_x = type_.speed_x();
         let speed_y = type_.speed_y();

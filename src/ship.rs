@@ -54,7 +54,7 @@ impl Ships {
         (1..4)
             .map(|_| {
                 options.seed = unsafe { miniquad::rand() as u64 };
-                sprite::generate(width, options, &data, 1).expect("Could not generate ship")
+                sprite::generate(width, options, &data).expect("Could not generate ship")
             })
             .collect()
     }
@@ -91,7 +91,7 @@ impl Ships {
         (1..4)
             .map(|_| {
                 options.seed = unsafe { miniquad::rand() as u64 };
-                sprite::generate(width, options, &data, 1).expect("Could not generate ship")
+                sprite::generate(width, options, &data).expect("Could not generate ship")
             })
             .collect()
     }
@@ -139,7 +139,7 @@ impl Ships {
         (1..4)
             .map(|_| {
                 options.seed = unsafe { miniquad::rand() as u64 };
-                sprite::generate(width, options, &data, 1).expect("Could not generate ship")
+                sprite::generate(width, options, &data).expect("Could not generate ship")
             })
             .collect()
     }
