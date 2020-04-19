@@ -250,8 +250,19 @@ impl<'a, 'b> Game<'a, 'b> {
                 );
             }
             Phase::GameOver => {
-                gui.draw_label(&mut buffer, "GAME OVER!", 160, 130);
-                gui.draw_label(&mut buffer, "Click to play again!", 120, 200);
+                gui.draw_label(&mut buffer, "GAME OVER!", 150, 130);
+
+                gui.draw_label(
+                    &mut buffer,
+                    format!(
+                        "Level {}\nScrap {}",
+                        self.level,
+                        self.world.read_resource::<Wallet>().money()
+                    ),
+                    165,
+                    150,
+                );
+                gui.draw_label(&mut buffer, "Click to play again!", 110, 250);
             }
             _ => (),
         }
