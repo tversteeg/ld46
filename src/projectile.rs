@@ -193,12 +193,14 @@ impl<'a> System<'a> for ProjectileSystem {
                 let projectile_aabr = projectile_bb.to_aabr(projectile_pos);
 
                 if projectile_aabr.collides_with_aabr(player_aabr) {
+                    if upgrades.hold {}
                     let speed = projectile_vel.magnitude();
                     let angle = (projectile_pos.0 - player_aabr.center() - Vec2::new(-20.0, 0.0))
                         .normalized();
+                    projectile_vel.0 = angle * speed;
+
                     let angle_rad = angle.y.atan2(angle.x);
 
-                    projectile_vel.0 = angle * speed;
                     if upgrades.split {
                         if let Some(ref sprite) = projectile_split_into {
                             // Delete the source

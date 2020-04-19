@@ -27,7 +27,7 @@ impl Upgrades {
     ) {
         let (x, y) = Upgrades::buttons()[0].0;
 
-        gui.draw_label(buffer, "Click to buy upgrade.", x, y - 50);
+        gui.draw_label(buffer, "Click to buy upgrades.", x, y - 50);
         gui.draw_label(
             buffer,
             format!("You have {} scrap.", wallet.money()),

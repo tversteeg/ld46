@@ -189,10 +189,10 @@ impl EnemyEmitter {
             _ => (),
         }
 
-        let total_time = level as f64 * 12.0 * 60.0;
+        let total_time = (level as f64 * 10.0 - 5.0) * 60.0;
 
         // Spread it out over time
-        let amount_of_enemies = level * level;
+        let amount_of_enemies = (level * level) / 2;
         let time_dist = total_time / amount_of_enemies as f64;
         let mut rest = 0.0;
         let mut spawner = (0..amount_of_enemies)
