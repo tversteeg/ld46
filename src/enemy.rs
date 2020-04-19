@@ -139,6 +139,7 @@ impl EnemyEmitter {
         );
 
         let bb = type_.bb();
+        /*
         updater.insert(
             enemy,
             ParticleEmitter::new(
@@ -149,6 +150,7 @@ impl EnemyEmitter {
             .with_dispersion(1.0 - resources / 200.0)
             .with_offset(bb.center_offset()),
         );
+        */
 
         let x_velocity_resources = random::range(
             ENEMY_VELOCITY_RESOURCES_MIN_FACTOR_X,

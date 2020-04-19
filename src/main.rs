@@ -34,7 +34,7 @@ pub const HEIGHT: usize = 300;
 
 const LEVEL_TIME_MINIMUM: f64 = 30.0;
 const LEVEL_TIME_SCALE: f64 = 5.0;
-const LEVEL_RESOURCES_MINIMUM: f64 = 50.0;
+const LEVEL_RESOURCES_MINIMUM: f64 = 500.0;
 const LEVEL_RESOURCES_SCALE: f64 = 20.0;
 
 /// Our game state.
@@ -157,6 +157,8 @@ impl<'a, 'b> Game<'a, 'b> {
         match phase {
             Phase::Menu => {}
             Phase::Initialize => {
+                self.level = 1.0;
+
                 // Generate the ships
                 self.world.insert(ship::Ships::generate());
 
@@ -232,6 +234,8 @@ impl<'a, 'b> Game<'a, 'b> {
             }
             Phase::GameOver => {
                 gui.draw_label(&mut buffer, "GAME OVER!", 160, 130);
+
+                gui.draw_label(&mut buffer, "Click to play again!", 120, 200);
             }
             _ => (),
         }
@@ -295,7 +299,7 @@ impl<'a, 'b> EventHandler for Game<'a, 'b> {
     ) {
         // Start the game
         let phase = (*self.world.read_resource::<Phase>()).clone();
-        if phase == Phase::Menu {
+        if phase == Phase::Menu || phase == Phase::GameOver {
             self.switch_phase(Phase::Initialize);
         } else if phase == Phase::Setup {
             self.switch_phase(Phase::Play);
