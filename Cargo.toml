@@ -17,7 +17,6 @@ anyhow = "1.0.28"
 derive_deref = "1.1.0"
 direct-gui = { version = "0.1.25", default-features = false }
 fastblur = "0.1.1"
-lazy_static = "1.4.0"
 #const-tweaker = "0.3.1"
 miniquad = "0.2.54"
 specs-blit = { version = "0.5.1", default-features = false }

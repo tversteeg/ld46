@@ -11,6 +11,7 @@ mod movement;
 mod particle;
 mod phase;
 mod physics;
+mod pickup;
 mod player;
 mod projectile;
 mod random;
@@ -64,6 +65,9 @@ impl<'a, 'b> Game<'a, 'b> {
 
         world.register::<enemy::Enemy>();
         world.register::<enemy::EnemyEmitter>();
+
+        world.register::<pickup::Pickup>();
+        world.register::<pickup::PickupEmitter>();
 
         world.register::<money::Money>();
 
@@ -127,6 +131,8 @@ impl<'a, 'b> Game<'a, 'b> {
             .with(physics::DragSystem, "drag", &["velocity"])
             .with(physics::BoundingBoxSystem, "bb", &["velocity"])
             .with(enemy::EnemyCollisionSystem, "enemy_collision", &["bb"])
+            .with(pickup::PickupSystem, "pickup", &["projectile", "velocity"])
+            .with(pickup::PickupEmitterSystem, "pickup_emitter", &[])
             .with(sprite::SpritePositionSystem, "sprite_pos", &["velocity"])
             .with(sprite::SpriteRotationSystem, "sprite_rot", &["velocity"])
             .with_thread_local(specs_blit::RenderSystem)
@@ -195,6 +201,7 @@ impl<'a, 'b> Game<'a, 'b> {
                 self.world
                     .create_entity()
                     .with(enemy::EnemyEmitter::new(Some(self.level)))
+                    .with(pickup::PickupEmitter::new())
                     .build();
 
                 // Spawn the paddle
