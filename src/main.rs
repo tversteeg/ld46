@@ -27,7 +27,7 @@ use crate::{
 use anyhow::Result;
 use miniquad::{
     conf::{Conf, Loading},
-    Context, EventHandler, KeyCode, KeyMods, MouseButton, UserData,
+    Context, EventHandler, MouseButton, UserData,
 };
 use specs_blit::{specs::prelude::*, PixelBuffer, Sprite};
 
@@ -74,6 +74,7 @@ impl<'a, 'b> Game<'a, 'b> {
 
         world.register::<projectile::Projectile>();
         world.register::<projectile::ProjectileEmitter>();
+        world.register::<projectile::SplitInto>();
 
         world.register::<entity::Lifetime>();
 
@@ -140,7 +141,7 @@ impl<'a, 'b> Game<'a, 'b> {
             world,
             dispatcher,
             render,
-            level: 1,
+            level: 0,
             background: Background::new(),
         };
         game.switch_phase(Phase::default());
@@ -162,6 +163,7 @@ impl<'a, 'b> Game<'a, 'b> {
             Phase::Initialize => {
                 self.level = 1;
                 self.world.write_resource::<Wallet>().reset();
+                self.world.write_resource::<Upgrades>().reset();
 
                 // Generate the ships
                 self.world.insert(ship::Ships::generate());
@@ -247,7 +249,6 @@ impl<'a, 'b> Game<'a, 'b> {
             }
             Phase::GameOver => {
                 gui.draw_label(&mut buffer, "GAME OVER!", 160, 130);
-
                 gui.draw_label(&mut buffer, "Click to play again!", 120, 200);
             }
             _ => (),

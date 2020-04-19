@@ -1,16 +1,21 @@
 use crate::{gui::Gui, input::Input, money::Wallet, phase::Phase};
-use specs_blit::{specs::*, PixelBuffer};
+use specs_blit::PixelBuffer;
 
 pub const HOLD_PRICE: usize = 2000;
 pub const SPLIT_PRICE: usize = 1000;
 
 #[derive(Debug, Default)]
 pub struct Upgrades {
-    hold: bool,
-    split: bool,
+    pub hold: bool,
+    pub split: bool,
 }
 
 impl Upgrades {
+    pub fn reset(&mut self) {
+        self.split = false;
+        self.hold = false;
+    }
+
     pub fn render(
         &mut self,
         buffer: &mut PixelBuffer,

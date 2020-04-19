@@ -92,6 +92,13 @@ impl EnemyType {
         }
     }
 
+    pub fn shoot_split_into(self, sprites: &Sprites) -> Option<SpriteRef> {
+        match self {
+            EnemyType::Small => None,
+            _ => Some(sprites.small_projectile().0),
+        }
+    }
+
     pub fn money(self) -> usize {
         (match self {
             EnemyType::Small => random::range(20.0, 30.0),
@@ -282,7 +289,8 @@ impl EnemyEmitter {
                 .with_speed(speed_x + 2.0)
                 .with_spread(type_.shoot_spread())
                 .with_interval(type_.shoot_interval())
-                .with_offset(bb.center_offset()),
+                .with_offset(bb.center_offset())
+                .split_into(type_.shoot_split_into(&sprites)),
         );
 
         updater.insert(enemy, bb);

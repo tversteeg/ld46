@@ -44,6 +44,10 @@ impl Velocity {
 
         Self(Vec2::new(rand_x, rand_y))
     }
+
+    pub fn zero() -> Self {
+        Self(Vec2::new(0.0, 0.0))
+    }
 }
 
 #[derive(Component, Debug, Default, Deref, DerefMut, Clone)]
