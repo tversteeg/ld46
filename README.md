@@ -12,7 +12,7 @@
 	</a>
 </h1>
 <p align="center">
-	A game, you can play!
+	How come we don’t see any life from other planets? What does an intergalactic society need to do to survive?
 </p>
 	
 <p align="center">
@@ -28,9 +28,9 @@ Or download the executable file from the [Releases](https://github.com/tversteeg
 
 > You might have to change the permissions on Linux with `chmod u+x ld46-*`
 
-## Instructions
+## How to play
 
-TODO
+Use the mouse to project your home planet from the alien invasion.
 
 ## Build
 

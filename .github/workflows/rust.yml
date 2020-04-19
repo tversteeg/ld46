@@ -3,12 +3,16 @@ on:
   push:
     branches:
       - master
+    tags:
+      - v*
     paths-ignore:
       - "docs/**"
       - "**.md"
   pull_request:
     branches:
       - master
+    tags:
+      - v*
     paths-ignore:
       - "docs/**"
       - "**.md"
@@ -114,7 +118,7 @@ jobs:
 
       - name: Install dependencies
         if: matrix.os == 'ubuntu-latest'
-        run: sudo apt-get install -y libasound2-dev libwayland-cursor0 libxkbcommon-dev libwayland-dev
+        run: sudo apt-get install -y libx11-dev libxi-dev libgl1-mesa-dev gcc-mingw-w64
 
       - name: Build target
         uses: actions-rs/cargo@v1
