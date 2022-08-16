@@ -21,4 +21,4 @@ fastblur = "0.1.1"
 miniquad = "0.2.54"
 specs-blit = { version = "0.5.1", default-features = false }
 sprite-gen = "0.2.0"
-vek = "0.10.2"
+vek = "0.15.8"
