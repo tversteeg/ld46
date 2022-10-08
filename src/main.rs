@@ -26,10 +26,7 @@ use crate::{
     upgrade::Upgrades,
 };
 use anyhow::Result;
-use miniquad::{
-    conf::{Conf, Loading},
-    Context, EventHandler, MouseButton, UserData,
-};
+use miniquad::{conf::Conf, Context, EventHandler, MouseButton};
 use specs_blit::{specs::prelude::*, PixelBuffer, Sprite};
 
 pub const WIDTH: usize = 400;
@@ -363,14 +360,8 @@ fn main() {
             window_title: concat!("Fermi Paradox - ", env!("CARGO_PKG_VERSION")).to_string(),
             window_width: WIDTH as i32 * 3,
             window_height: HEIGHT as i32 * 3,
-            loading: Loading::Embedded,
             ..Default::default()
         },
-        |mut ctx| {
-            UserData::owning(
-                Game::new(&mut ctx).expect("Setting up game state failed"),
-                ctx,
-            )
-        },
+        |mut ctx| Box::new(Game::new(&mut ctx).expect("Setting up game state failed")),
     );
 }

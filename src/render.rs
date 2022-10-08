@@ -23,11 +23,6 @@ void main() {
     gl_FragColor = texture2D(tex, texcoord);
 }"#;
 
-const META: ShaderMeta = ShaderMeta {
-    images: &["tex"],
-    uniforms: UniformBlockLayout { uniforms: &[] },
-};
-
 #[repr(C)]
 struct Vec2 {
     x: f32,
@@ -94,7 +89,14 @@ impl Render {
         };
 
         // Create an OpenGL pipeline
-        let shader = Shader::new(ctx, VERTEX, FRAGMENT, META);
+        let meta = ShaderMeta {
+            images: vec!["tex".to_string()],
+            uniforms: UniformBlockLayout {
+                uniforms: Vec::new(),
+            },
+        };
+
+        let shader = Shader::new(ctx, VERTEX, FRAGMENT, meta).unwrap();
         let pipeline = Pipeline::new(
             ctx,
             &[BufferLayout::default()],

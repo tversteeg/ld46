@@ -50,7 +50,7 @@ pub fn sprite() -> BlitBuffer {
             color_variations: 0.47232494,
             brightness_noise: 0.81954944,
             saturation: 1.0,
-            seed: unsafe { miniquad::rand() as u64 },
+            seed: quad_rand::rand() as u64,
         },
     );
     let data = [

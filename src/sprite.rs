@@ -85,7 +85,7 @@ pub fn generate_planet() -> Result<SpriteRef> {
             color_variations: 0.8547504,
             brightness_noise: 0.9012264,
             saturation: 0.0,
-            seed: unsafe { miniquad::rand() as u64 },
+            seed: quad_rand::rand() as u64,
         },
     );
     let mut data = vec![Empty; width * height];
@@ -168,7 +168,7 @@ impl Sprites {
                 color_variations: 0.8547504,
                 brightness_noise: 0.9012264,
                 saturation: 1.0,
-                seed: unsafe { miniquad::rand() as u64 },
+                seed: quad_rand::rand() as u64,
             },
         );
         let data = [
@@ -195,7 +195,7 @@ impl Sprites {
                 color_variations: 0.8547504,
                 brightness_noise: 0.9012264,
                 saturation: 1.0,
-                seed: unsafe { miniquad::rand() as u64 },
+                seed: quad_rand::rand() as u64,
             },
         );
         let data = [

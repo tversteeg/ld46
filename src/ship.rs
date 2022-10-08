@@ -38,7 +38,7 @@ impl Ships {
                 color_variations: 0.23466119,
                 brightness_noise: 0.83068764,
                 saturation: 0.6434743,
-                seed: unsafe { miniquad::rand() as u64 },
+                seed: quad_rand::rand() as u64,
             },
         );
         let data = [
@@ -53,7 +53,7 @@ impl Ships {
 
         (1..4)
             .map(|_| {
-                options.seed = unsafe { miniquad::rand() as u64 };
+                options.seed = quad_rand::rand() as u64;
                 sprite::generate(width, options, &data).expect("Could not generate ship")
             })
             .collect()
@@ -71,7 +71,7 @@ impl Ships {
                 color_variations: 0.23466119,
                 brightness_noise: 0.83068764,
                 saturation: 0.6434743,
-                seed: unsafe { miniquad::rand() as u64 },
+                seed: quad_rand::rand() as u64,
             },
         );
         let data = [
@@ -90,7 +90,7 @@ impl Ships {
 
         (1..4)
             .map(|_| {
-                options.seed = unsafe { miniquad::rand() as u64 };
+                options.seed = quad_rand::rand() as u64;
                 sprite::generate(width, options, &data).expect("Could not generate ship")
             })
             .collect()
@@ -108,7 +108,7 @@ impl Ships {
                 color_variations: 0.35297588,
                 brightness_noise: 0.57201767,
                 saturation: 0.7861507,
-                seed: unsafe { miniquad::rand() as u64 },
+                seed: quad_rand::rand() as u64,
             },
         );
         let data = [
@@ -138,7 +138,7 @@ impl Ships {
 
         (1..4)
             .map(|_| {
-                options.seed = unsafe { miniquad::rand() as u64 };
+                options.seed = quad_rand::rand() as u64;
                 sprite::generate(width, options, &data).expect("Could not generate ship")
             })
             .collect()

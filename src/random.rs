@@ -1,24 +1,24 @@
 pub fn range(min: f64, max: f64) -> f64 {
-    let r = unsafe { miniquad::rand() as f64 / miniquad::RAND_MAX as f64 };
+    let r = quad_rand::rand() as f64 / u32::MAX as f64;
 
     r * (max - min) + min
 }
 
 pub fn usize(max: usize) -> usize {
-    let r = unsafe { miniquad::rand() as usize };
+    let r = quad_rand::rand() as usize;
 
-    (r / (miniquad::RAND_MAX as usize / max)).min(max - 1)
+    (r / (u32::MAX as usize / max)).min(max - 1)
 }
 
 pub fn bool() -> bool {
-    let r = unsafe { miniquad::rand() };
+    let r = quad_rand::rand();
 
-    r > miniquad::RAND_MAX as i32 / 2
+    r > u32::MAX / 2
 }
 
 pub fn index<T>(v: &Vec<T>) -> &T {
     let len = v.len();
-    let r = unsafe { miniquad::rand() } as usize / (miniquad::RAND_MAX as usize / len);
+    let r = quad_rand::rand() as usize / (u32::MAX as usize / len);
 
     &v[r.min(len - 1)]
 }

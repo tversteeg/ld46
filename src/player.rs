@@ -48,7 +48,7 @@ pub fn spawn_player(world: &mut World) -> Result<()> {
             color_variations: 0.01,
             brightness_noise: 0.50169325,
             saturation: 0.4671184,
-            seed: unsafe { miniquad::rand() as u64 },
+            seed: quad_rand::rand() as u64,
         },
     );
     let data = [
