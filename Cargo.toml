@@ -22,4 +22,4 @@ miniquad = "0.3.15"
 quad-rand = "0.2.1"
 specs-blit = { version = "0.5.1", default-features = false }
 sprite-gen = "0.2.0"
-vek = "0.15.9"
+vek = "0.15.10"
