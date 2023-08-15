@@ -13,7 +13,7 @@ keywords = ["game", "ludum-dare", "pong"]
 categories = ["games"]
 
 [dependencies]
-anyhow = "1.0.72"
+anyhow = "1.0.74"
 derive_deref = "1.1.1"
 direct-gui = { version = "0.1.26", default-features = false }
 fastblur = "0.1.1"
