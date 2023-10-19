@@ -23,7 +23,7 @@ jobs:
     name: cargo fmt & cargo clippy
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608 # v4
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
 
       - name: install dependencies
         # run: sudo apt-get install -y libasound2-dev libwayland-cursor0 libxkbcommon-dev libwayland-dev
@@ -52,7 +52,7 @@ jobs:
     name: wasm compile & deploy
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608 # v4
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
 
       - name: install rust
         uses: actions-rs/toolchain@v1
@@ -105,7 +105,7 @@ jobs:
             name: ld46-x86_64-pc-windows-msvc.exe
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608 # v4
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
 
       - name: Install Rust toolchain
         uses: actions-rs/toolchain@v1
@@ -154,7 +154,7 @@ jobs:
     needs: github_build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608 # v4
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
 
       # These can be squashed when https://github.com/actions/download-artifact/issues/6 is closed
       - name: Download releases from github_build
