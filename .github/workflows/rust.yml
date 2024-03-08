@@ -177,7 +177,7 @@ jobs:
         run: for file in ld46-*; do openssl dgst -sha256 -r "$file" | awk '{print $1}' > "${file}.sha256"; done
 
       - name: Create GitHub release ${{ matrix.target }}
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           files: |
             ld46-*
