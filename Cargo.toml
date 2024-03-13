@@ -18,7 +18,7 @@ derive_deref = "1.1.1"
 direct-gui = { version = "0.1.26", default-features = false }
 fastblur = "0.1.1"
 #const-tweaker = "0.3.1"
-miniquad = "0.3.16"
+miniquad = "0.4.0"
 quad-rand = "0.2.1"
 specs-blit = { version = "0.5.1", default-features = false }
 sprite-gen = "0.2.0"
